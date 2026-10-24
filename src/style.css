@@ -93,9 +93,9 @@ img { -webkit-user-drag: none; }
 .place > img { display: block; }
 .place-plant { left: -4%; bottom: 36%; width: 30%; }
 .place-rug { left: 1%; top: 68%; width: 98%; }
-.place-bed { left: -4%; bottom: 6.5%; width: 32%; }
-.place-scratcher { left: 75%; bottom: 7%; width: 28%; }
-.place-toy { left: 41%; bottom: 9%; width: 18%; }
+.place-bed { left: -3%; bottom: 12%; width: 28%; } /* front items stay above the bottom nav */
+.place-scratcher { left: 76%; bottom: 11%; width: 26%; }
+.place-toy { left: 41%; bottom: 12.5%; width: 18%; }
 .place > img.appear { animation: appear .6s cubic-bezier(.2, 1.6, .4, 1); }
 @keyframes appear { from { transform: translateY(-20%) scale(.6); opacity: 0; } }
 
@@ -128,13 +128,13 @@ img { -webkit-user-drag: none; }
 .spin:active:not(:disabled) { transform: translateY(0.5cqw); box-shadow: inset 0 0.6cqw 0 #ffffff55, 0 0.3cqw 0 #6a0b1e; }
 .spin:disabled { filter: saturate(.5) brightness(.9); }
 .spin-cost { font-size: 3.4cqw; vertical-align: middle; opacity: .9; }
-.lever { left: 86.5%; top: 50.5%; width: 7.5%; transform-origin: 50% 90%; cursor: pointer; }
+.lever { left: 83.3%; top: 50.5%; width: 7.5%; transform-origin: 50% 90%; cursor: pointer; }
 .lever.pull { animation: pull .5s ease; }
 @keyframes pull { 40% { transform: scaleY(.55); } }
 .cushion { left: 31%; top: 44.4%; width: 38%; pointer-events: none; }
 
 /* ---------- Cat: shared 768 canvas, paws at 83.3% ---------- */
-.cat { left: 19%; top: 17.4%; width: 62%; aspect-ratio: 1; padding: 0; border: 0; background: none; pointer-events: none; }
+.cat { left: 17%; top: 18.9%; width: 62%; aspect-ratio: 1; padding: 0; border: 0; background: none; pointer-events: none; }
 .cat img { width: 100%; height: 100%; transform-origin: 50% 83%; animation: breathe 3.2s ease-in-out infinite; }
 .cat::after { content: ""; position: absolute; left: 30%; right: 30%; top: 30%; bottom: 17%; pointer-events: auto; border-radius: 40%; } /* tap zone = the cat, not the empty canvas */
 .cat.joy img { animation: hop .6s ease; }
@@ -219,6 +219,7 @@ img { -webkit-user-drag: none; }
 .paytable { width: 100%; border-collapse: collapse; }
 .paytable td { padding: calc(var(--u) * 1.2) 0; border-bottom: 1px solid #ecdcc6; }
 .note { color: #8a6a55; font-size: calc(var(--u) * 3.2); }
+.god { width: 100%; padding: calc(var(--u) * 2.4); border: 0; border-radius: 99px; background: linear-gradient(#ffd56b, #f29f1f); font-weight: 900; }
 
 /* ---------- Ambient room life: only transform/opacity/filter, cheap on phones ---------- */
 .curtain-left, .curtain-right { transform-origin: 50% 0; animation: sway 7s ease-in-out infinite; }

@@ -10,8 +10,8 @@ const asset = (name) => `assets/${name}.webp`;
 const catSrc = (pose) => `assets/cats/${state.breed}-${pose}.webp`;
 const reels = [0, 1, 2].map((i) => $(`reel${i}`));
 const symbolById = Object.fromEntries(SYMBOLS.map((s) => [s.id, s]));
-const systemReduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const motionOn = () => state.settings.motion ?? !systemReduce;
+// On by default: with motion off, spins finish instantly and can be tapped through.
+const motionOn = () => state.settings.motion ?? true;
 const applyMotion = () => document.body.classList.toggle('no-motion', !motionOn());
 
 let state;
@@ -352,6 +352,8 @@ const panels = {
         <tr><td>Пара 💎</td><td>1 💎</td></tr><tr><td>Любая другая пара</td><td>6 🪙</td></tr>
       </table>
       <p class="note">🐾 лапка заменяет любой символ. Прокрутка стоит 1 🐟, рыбки восполняются: +1 каждые 3 минуты до ${FISH_CAP}.</p>
+      <h3>Тест</h3>
+      <button class="god" data-god="1">⚡ Год-мод: +10 000 🪙, +100 💎, +50 🐟</button>
       <p class="note">${inTelegram ? 'Прогресс хранится в облаке Telegram и общий для всех твоих устройств.' : 'Прогресс хранится только в этом браузере.'}</p>`,
   },
 };
@@ -382,6 +384,8 @@ $('panelBody').addEventListener('click', (e) => {
   else if (b.dataset.placeItem) { placeItem(state, b.dataset.placeItem); save(); renderRoom(b.dataset.placeItem); sfx.click(); }
   else if (b.dataset.target) { state.target = b.dataset.target; save(); renderGoal(); sfx.click(); }
   else if (b.dataset.breed) { state.breed = b.dataset.breed; save(); setPose('calm'); sfx.click(); }
+  // shortcut: test-only cheat for the owner, remove (or hide) before friends play for real
+  else if (b.dataset.god) { state.coins += 10000; state.crystals += 100; state.fish += 50; shown = null; save(); renderHud(); renderGoal(); sfx.buy(); haptic('success'); }
   else if (b.dataset.buyBreed) {
     if (buyBreed(state, b.dataset.buyBreed)) { sfx.buy(); haptic('success'); save(); renderHud(); setPose('hype', 1800); }
   }
