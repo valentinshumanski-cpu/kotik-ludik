@@ -10,6 +10,8 @@ export function configureAudio({ sound, volume }) {
   if (master) master.gain.setTargetAtTime(sound ? volume : 0, ctx.currentTime, 0.02);
 }
 
+export const audioGraph = () => (ctx ? { ctx, master } : null);
+
 // Browsers only allow audio after a user gesture, so call this from click handlers.
 export function unlockAudio() {
   if (!settings.sound) return;
@@ -66,6 +68,7 @@ export const sfx = {
     else seq([659, 831, 988, 1319], { duration: 0.11, interval: 0.13, type: 'triangle', peak: 0.09 });
   },
   purr: () => seq([92, 98, 92], { duration: 0.16, interval: 0.17, type: 'triangle', peak: 0.05 }),
+  catch: () => seq([988, 1319], { duration: 0.07, interval: 0.07, type: 'triangle', peak: 0.06 }),
   buy: () => seq([784, 988, 1175], { duration: 0.14, interval: 0.17, peak: 0.065 }),
   denied: () => seq([220], { duration: 0.12, type: 'square', peak: 0.03 }),
 };

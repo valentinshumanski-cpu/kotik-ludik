@@ -1,13 +1,14 @@
 // Player state and the rules that change it. Pure functions, no DOM, no storage.
-import { ITEMS, BREEDS, itemById } from '../data/content.js';
+import { ITEMS, BREEDS, TASKS, ACHIEVEMENTS, REQUESTS, itemById } from '../data/content.js';
+import { dayKey, track } from './progress.js';
+
+export { dayKey };
 
 export const SAVE_VERSION = 1;
 export const FISH_CAP = 30;
 export const FISH_REGEN_MS = 3 * 60 * 1000;
 export const PETS_PER_FISH = 10;
 export const PET_FISH_PER_DAY = 10;
-
-export const dayKey = (now) => new Date(now).toLocaleDateString('sv'); // local YYYY-MM-DD
 
 export function createState(now = Date.now()) {
   return {
@@ -24,8 +25,14 @@ export function createState(now = Date.now()) {
     target: 'cat-bed',
     breed: 'ginger',
     breeds: ['ginger'],
-    stats: { spins: 0 },
-    settings: { sound: true, volume: 0.7, motion: null }, // motion null = follow the system setting
+    stats: { spins: 0, pets: 0, games: 0, catches: 0, wins: 0, buys: 0 },
+    daily: { day: '', counts: {}, tasks: [], claimed: [] },
+    achievements: [],
+    request: null,
+    requestAt: now + 60 * 1000, // first request a minute after the very first launch
+    giftDay: '',
+    playLog: [],
+    settings: { sound: true, volume: 0.7, music: true, motion: null }, // motion null = default (on)
   };
 }
 
@@ -49,10 +56,21 @@ export function normalize(raw, now = Date.now()) {
   const breedIds = new Set(BREEDS.map((breed) => breed.id));
   state.breeds = [...new Set(['ginger', ...(Array.isArray(raw.breeds) ? raw.breeds.filter((id) => breedIds.has(id)) : [])])];
   state.breed = state.breeds.includes(raw.breed) ? raw.breed : 'ginger';
-  state.stats = { spins: num(raw.stats?.spins, 0) };
+  state.stats = Object.fromEntries(Object.keys(base.stats).map((k) => [k, num(raw.stats?.[k], 0)]));
+  const ids = (list, all) => (Array.isArray(list) ? [...new Set(list.filter((id) => all.some((x) => x.id === id)))] : []);
+  if (typeof raw.daily?.day === 'string') {
+    const counts = Object.fromEntries(Object.keys(base.stats).map((k) => [k, num(raw.daily.counts?.[k], 0)]));
+    state.daily = { day: raw.daily.day, counts, tasks: ids(raw.daily.tasks, TASKS), claimed: ids(raw.daily.claimed, TASKS) };
+  }
+  state.achievements = ids(raw.achievements, ACHIEVEMENTS);
+  state.request = REQUESTS.some((r) => r.id === raw.request?.id) ? { id: raw.request.id, base: num(raw.request.base, 0) } : null;
+  state.requestAt = num(raw.requestAt, base.requestAt);
+  state.giftDay = typeof raw.giftDay === 'string' ? raw.giftDay : '';
+  state.playLog = Array.isArray(raw.playLog) ? raw.playLog.filter((t) => Number.isFinite(t)).slice(-10) : [];
   state.settings = {
     sound: raw.settings?.sound !== false,
     volume: Number.isFinite(raw.settings?.volume) ? Math.min(1, Math.max(0, raw.settings.volume)) : base.settings.volume,
+    music: raw.settings?.music !== false,
     motion: typeof raw.settings?.motion === 'boolean' ? raw.settings.motion : null,
   };
   return state;
@@ -83,7 +101,8 @@ export function applySpin(state, result, now = Date.now()) {
   state.coins += result.reward.coins || 0;
   state.fish += result.reward.fish || 0;
   state.crystals += result.reward.crystals || 0;
-  state.stats.spins += 1;
+  track(state, 'spins', 1, now);
+  if (result.kind && result.kind !== 'none') track(state, 'wins', 1, now);
   return true;
 }
 
@@ -93,6 +112,7 @@ export function pet(state, now = Date.now()) {
   if (state.pets.day !== day) state.pets = { day, count: 0, fishGiven: 0 };
   state.pets.count += 1;
   state.bond += 1;
+  track(state, 'pets', 1, now);
   if (state.pets.count % PETS_PER_FISH === 0 && state.pets.fishGiven < PET_FISH_PER_DAY) {
     state.pets.fishGiven += 1;
     state.fish += 1;
@@ -101,12 +121,13 @@ export function pet(state, now = Date.now()) {
   return false;
 }
 
-export function buyItem(state, id) {
+export function buyItem(state, id, now = Date.now()) {
   const item = itemById(id);
   if (!item || state.owned.includes(id) || state.coins < item.price) return false;
   state.coins -= item.price;
   state.owned.push(id);
   state.placed[item.place] = id;
+  track(state, 'buys', 1, now);
   if (state.target === id) state.target = nextTarget(state);
   return true;
 }

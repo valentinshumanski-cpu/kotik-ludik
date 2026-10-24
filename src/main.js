@@ -1,6 +1,13 @@
 import { SYMBOLS, spinReels, evaluate } from './game/slot.js';
 import { applySpin, regenFish, msToNextFish, pet, buyItem, placeItem, buyBreed, FISH_CAP } from './game/state.js';
-import { ITEMS, PLACES, BREEDS, itemById } from './data/content.js';
+import { ITEMS, PLACES, BREEDS, ACHIEVEMENTS, itemById } from './data/content.js';
+import {
+  todaysTasks, taskProgress, claimTask, achievementProgress, claimAchievement, claimableCount, claimDailyGift,
+  maybeRequest, currentRequest, requestProgress, completeRequest, finishGame, msToNextGameReward,
+  GIFT_FISH, GAME_REWARDS_PER_HOUR, MAX_GAME_COINS, REQUEST_REWARD,
+} from './game/progress.js';
+import { startGame } from './minigames.js';
+import { startMusic, stopMusic } from './music.js';
 import { loadState, saveState } from './platform/storage.js';
 import { initTelegram, haptic, setBackButton, inTelegram } from './platform/telegram.js';
 import { sfx, unlockAudio, configureAudio } from './audio.js';
@@ -22,6 +29,15 @@ let poseTimer = null;
 let idleTimer = null;
 let bubbleTimer = null;
 let saveWarned = false;
+let stopGame = null;
+let lastGame = null;
+
+// Audio may only start after a tap; music joins it when enabled and the app is in front.
+function audioOn() {
+  unlockAudio();
+  if (state.settings.sound && state.settings.music && document.visibilityState === 'visible') startMusic();
+  else stopMusic();
+}
 
 // ---------- persistence ----------
 function save() {
@@ -44,6 +60,7 @@ function renderHud() {
   const ms = msToNextFish(state);
   $('fishTimer').textContent = ms ? `+1 через ${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}` : '';
   $('spinButton').disabled = spinning;
+  document.querySelector('[data-panel=tasks]').classList.toggle('badge', claimableCount(state) > 0);
 }
 
 function renderGoal() {
@@ -121,7 +138,29 @@ function say(text, ms = 2200) {
   void bubble.offsetWidth;
   bubble.style.animation = '';
   clearTimeout(bubbleTimer);
-  bubbleTimer = setTimeout(() => { bubble.hidden = true; }, ms);
+  bubbleTimer = setTimeout(showRequest, ms);
+}
+
+// Alex's current request stays in his speech bubble until it is done.
+function showRequest() {
+  bubbleTimer = null;
+  const r = currentRequest(state);
+  const bubble = $('bubble');
+  bubble.hidden = !r || Boolean(stopGame);
+  if (r) bubble.textContent = `💭 ${r.text} ${requestProgress(state)}/${r.target}`;
+}
+
+// Called after anything the player does: finishes a request once its counter is reached.
+function afterActivity() {
+  if (completeRequest(state)) {
+    hearts(5);
+    sfx.buy();
+    haptic('success');
+    shown = null;
+    say(`Спасибо! 💛 +${REQUEST_REWARD.fish} 🐟`, 2600);
+  } else if (bubbleTimer === null) showRequest(); // refresh the progress unless a message is showing
+  save();
+  renderHud();
 }
 
 // Floating particles (hearts, sparkles, reward text) at x/y in % of the stage.
@@ -162,7 +201,7 @@ function confetti(count = 26) {
 }
 
 function onPet() {
-  unlockAudio();
+  audioOn();
   wake();
   const gotFish = pet(state);
   react('squish', 'pet', 1200);
@@ -173,8 +212,7 @@ function onPet() {
     shown = null;
     say('Мур! Держи рыбку 🐟');
   } else if (state.pets.count % 10 === 5) say('Мур-мур…');
-  save();
-  renderHud();
+  afterActivity();
 }
 
 // ---------- slot ----------
@@ -206,7 +244,7 @@ function flyCoins(fromEl, toPill, count) {
 
 function spin() {
   if (spinning) return;
-  unlockAudio();
+  audioOn();
   wake();
   regenFish(state);
   const outcome = spinReels();
@@ -280,6 +318,7 @@ function reveal(result) {
   if (state.target && state.coins >= itemById(state.target).price && state.coins - coins < itemById(state.target).price) {
     setTimeout(() => say(`Хватает на «${itemById(state.target).name}»! Жми на карточку`, 3000), 900);
   }
+  afterActivity();
 }
 
 // ---------- goal card & panels ----------
@@ -294,11 +333,12 @@ function buy(id) {
   const placed = document.querySelector(`[data-place="${itemById(id).place}"]`);
   if (placed) burst('spark', '✦', 6, ...stagePoint(placed), 18);
   say('Ура, обновка! 💛');
+  afterActivity();
   return true;
 }
 
 function onGoal() {
-  unlockAudio();
+  audioOn();
   const item = itemById(state.target);
   if (item && state.coins >= item.price) buy(item.id);
   else openPanel('shop');
@@ -337,12 +377,49 @@ const panels = {
   },
   tasks: {
     title: 'Задания',
-    render: () => '<p>Дневные задания и просьбы Алекса появятся на этапе 3.</p><p class="note">Пока: гладь Алекса — каждые 10 поглаживаний дают рыбку (до 10 в день).</p>',
+    render: () => {
+      const row = (title, have, target, reward, button) => `<div class="task"><span>${title}<span class="bar"><i style="width:${(100 * have) / target}%"></i></span><small>${have} / ${target} · награда ${rewardText(reward)}</small></span>${button}</div>`;
+      const daily = todaysTasks(state).map((t) => {
+        const done = taskProgress(state, t) >= t.target;
+        const claimed = state.daily.claimed.includes(t.id);
+        return row(t.title, taskProgress(state, t), t.target, t.reward,
+          claimed ? '<button class="ghost" disabled>✓</button>' : `<button data-claim-task="${t.id}" ${done ? '' : 'disabled'}>Забрать</button>`);
+      }).join('');
+      const r = currentRequest(state);
+      const achievements = ACHIEVEMENTS.map((a) => {
+        const claimed = state.achievements.includes(a.id);
+        const have = achievementProgress(state, a);
+        return row(`<b>${a.title}</b> — ${a.text}`, have, a.target, a.reward,
+          claimed ? '<button class="ghost" disabled>✓</button>' : `<button data-claim-ach="${a.id}" ${have >= a.target ? '' : 'disabled'}>Забрать</button>`);
+      }).join('');
+      return `<h3>На сегодня</h3>${daily}<p class="note">Новые задания каждый день в полночь. Пропустить день не страшно.</p>
+        <h3>Просьба Алекса</h3>${r ? row(r.text, requestProgress(state), r.target, REQUEST_REWARD, '<span class="note">💭</span>') : '<p class="note">Алекс пока ничего не просит. Загляни попозже 🐾</p>'}
+        <h3>Достижения</h3>${achievements}`;
+    },
+  },
+  play: {
+    title: 'Поиграть с Алексом',
+    render: () => {
+      const wait = msToNextGameReward(state);
+      const left = GAME_REWARDS_PER_HOUR - state.playLog.filter((t) => Date.now() - t < 3600e3).length;
+      return `<div class="grid">
+        <button class="game-pick" data-game="mouse"><img src="assets/toy-mouse.webp" alt=""><b>Поймай мышку</b><small>Тапай по мышкам</small></button>
+        <button class="game-pick" data-game="laser"><span class="laser-preview"></span><b>Лазерная точка</b><small>Веди точку — Алекс ловит</small></button>
+      </div>
+      <p class="note">${wait ? `Монетки на этот час закончились, следующие через ${Math.ceil(wait / 60000)} мин. Играть можно и так!` : `Монетки за игру: по 2 за поимку, до ${MAX_GAME_COINS}. Осталось игр с наградой в этот час: ${left} из ${GAME_REWARDS_PER_HOUR}.`}</p>`;
+    },
+  },
+  result: {
+    title: 'Игра окончена',
+    render: () => `<div class="game-result"><b>Поймано: ${lastGame.catches}</b>
+      <p>${lastGame.coins ? `+${lastGame.coins} 🪙` : msToNextGameReward(state) ? 'Без монеток: лимит наград на этот час' : 'В этот раз без монеток'}</p></div>
+      <div class="grid"><button data-game="${lastGame.kind}">Ещё раз</button><button class="ghost" data-close="1">Готово</button></div>`,
   },
   settings: {
     title: 'Настройки',
     render: () => `
       <div class="row"><label for="soundOn">Звук</label><input type="checkbox" id="soundOn" ${state.settings.sound ? 'checked' : ''}></div>
+      <div class="row"><label for="musicOn">Музыка</label><input type="checkbox" id="musicOn" ${state.settings.music ? 'checked' : ''}></div>
       <div class="row"><label for="volume">Громкость</label><input type="range" id="volume" min="0" max="100" value="${Math.round(state.settings.volume * 100)}"></div>
       <div class="row"><label for="motionOn">Анимации</label><input type="checkbox" id="motionOn" ${motionOn() ? 'checked' : ''}></div>
       <h3>Выплаты</h3>
@@ -374,18 +451,56 @@ function closePanel() {
   document.querySelectorAll('.nav button').forEach((b) => b.classList.toggle('active', b.dataset.panel === 'room'));
   setBackButton(null);
 }
+const rewardText = (r) => [r.coins && `${r.coins} 🪙`, r.fish && `${r.fish} 🐟`, r.crystals && `${r.crystals} 💎`].filter(Boolean).join(' ');
+
+function playGame(kind) {
+  closePanel();
+  document.body.classList.add('in-game');
+  $('bubble').hidden = true;
+  react(null, 'calm');
+  stopGame = startGame(kind, {
+    stage: $('stage'),
+    cat: $('cat'),
+    catSrc,
+    onCatch(x, y) {
+      burst('spark', '✦', 5, x, y, 10);
+      sfx.catch();
+      haptic('medium');
+      if (kind === 'mouse') react('joy', 'play', 500);
+    },
+    onEnd(catches, quit) {
+      stopGame = null;
+      document.body.classList.remove('in-game');
+      setBackButton(null);
+      if (quit && !catches) return showRequest(); // leaving at once does not count as a game
+      const coins = finishGame(state, catches);
+      lastGame = { kind, catches, coins };
+      if (coins) { shown = null; react('hype', 'hype', 1600); hearts(3); }
+      afterActivity();
+      openPanel('result');
+    },
+  });
+  setBackButton(() => stopGame?.());
+}
+
 const refreshPanel = () => openName && ($('panelBody').innerHTML = panels[openName].render());
 
 $('panelBody').addEventListener('click', (e) => {
   const b = e.target.closest('button');
   if (!b) return;
-  unlockAudio();
+  audioOn();
   if (b.dataset.buy) buy(b.dataset.buy);
   else if (b.dataset.placeItem) { placeItem(state, b.dataset.placeItem); save(); renderRoom(b.dataset.placeItem); sfx.click(); }
   else if (b.dataset.target) { state.target = b.dataset.target; save(); renderGoal(); sfx.click(); }
   else if (b.dataset.breed) { state.breed = b.dataset.breed; save(); setPose('calm'); sfx.click(); }
   // shortcut: test-only cheat for the owner, remove (or hide) before friends play for real
   else if (b.dataset.god) { state.coins += 10000; state.crystals += 100; state.fish += 50; shown = null; save(); renderHud(); renderGoal(); sfx.buy(); haptic('success'); }
+  else if (b.dataset.claimTask || b.dataset.claimAch) {
+    const ok = b.dataset.claimTask ? claimTask(state, b.dataset.claimTask) : claimAchievement(state, b.dataset.claimAch);
+    if (ok) { sfx.buy(); haptic('success'); shown = null; save(); renderHud(); }
+  }
+  else if (b.dataset.game) return playGame(b.dataset.game);
+  else if (b.dataset.close) return closePanel();
   else if (b.dataset.buyBreed) {
     if (buyBreed(state, b.dataset.buyBreed)) { sfx.buy(); haptic('success'); save(); renderHud(); setPose('hype', 1800); }
   }
@@ -395,7 +510,9 @@ $('panelBody').addEventListener('input', (e) => {
   if (e.target.id === 'soundOn') state.settings.sound = e.target.checked;
   if (e.target.id === 'volume') state.settings.volume = e.target.value / 100;
   if (e.target.id === 'motionOn') state.settings.motion = e.target.checked;
+  if (e.target.id === 'musicOn') state.settings.music = e.target.checked;
   configureAudio(state.settings);
+  audioOn();
   applyMotion();
   save();
 });
@@ -409,10 +526,10 @@ $('lever').addEventListener('click', spin);
 $('cat').addEventListener('click', onPet);
 $('petButton').addEventListener('click', onPet);
 $('playButton').addEventListener('click', () => {
-  unlockAudio();
+  audioOn();
   wake();
-  react('joy', 'play', 1500);
-  say('Мини-игры с мышкой и лазером скоро! 🐭');
+  react('joy', 'play', 1200);
+  openPanel('play');
 });
 $('goalCard').addEventListener('click', onGoal);
 $('settingsButton').addEventListener('click', () => openPanel('settings'));
@@ -422,8 +539,15 @@ setInterval(() => {
   const before = state.fish;
   regenFish(state);
   if (state.fish !== before) save();
+  if (!stopGame && !spinning && maybeRequest(state)) {
+    save();
+    showRequest();
+    haptic('light');
+  }
   renderHud();
 }, 1000);
+document.addEventListener('visibilitychange', () => (document.visibilityState === 'visible' ? state && audioOn() : stopMusic()));
+document.addEventListener('pointerdown', () => audioOn(), { once: true }); // music starts with the first tap anywhere
 
 initTelegram();
 state = await loadState();
@@ -434,3 +558,11 @@ regenFish(state);
 renderAll();
 wake();
 blinkLoop();
+if (claimDailyGift(state)) {
+  save();
+  setTimeout(() => {
+    say(`Ежедневный подарок: +${GIFT_FISH} 🐟`, 3000);
+    burst('reward', `+${GIFT_FISH} 🐟`, 1, 50, 20, 0);
+    renderHud();
+  }, 700);
+} else showRequest();

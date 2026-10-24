@@ -273,5 +273,53 @@ img { -webkit-user-drag: none; }
 .confetti { position: absolute; top: 8%; width: 1.6cqw; height: 2.4cqw; border-radius: 0.3cqw; animation: fall 2s ease-in forwards; }
 @keyframes fall { from { transform: translateY(0) rotate(0); opacity: 1; } to { transform: translateY(150cqw) rotate(720deg); opacity: 0; } }
 
+/* ---------- Tasks panel ---------- */
+.task { display: grid; grid-template-columns: 1fr auto; gap: calc(var(--u) * 2); align-items: center; padding: calc(var(--u) * 2) 0; border-bottom: 1px solid #ecdcc6; }
+.task small { display: block; color: #8a6a55; font-size: calc(var(--u) * 3); }
+.task .bar { display: block; height: calc(var(--u) * 1.6); margin: calc(var(--u) * 1) 0; border-radius: 99px; background: #e9d6bd; overflow: hidden; }
+.task .bar i { display: block; height: 100%; background: linear-gradient(90deg, #ffd56b, #f29f1f); }
+.task button { padding: calc(var(--u) * 1.8) calc(var(--u) * 3); border: 0; border-radius: 99px; background: var(--berry); color: #fff; font-weight: 800; }
+.task button:disabled { opacity: .45; }
+.task button.ghost { background: #e9d6bd; color: var(--ink); opacity: 1; }
+.nav button.badge { position: relative; }
+.nav button.badge::after { content: ""; position: absolute; top: 6%; right: 14%; width: calc(var(--u) * 2.6); height: calc(var(--u) * 2.6); border-radius: 50%; background: #ff4b5c; box-shadow: 0 0 0 2px #3b1a12; }
+
+/* ---------- Mini-games ---------- */
+.game-pick { display: grid; gap: calc(var(--u) * 1.2); justify-items: center; padding: calc(var(--u) * 3); border: 0; border-radius: calc(var(--u) * 3); background: #fff; box-shadow: 0 2px 6px #0001; }
+.game-pick img, .laser-preview { width: 70%; height: calc(var(--u) * 18); object-fit: contain; }
+.laser-preview { display: block; background: radial-gradient(circle, #fff 0 6%, #ff2a2a 14%, #ff2a2a00 34%); }
+.game-pick small { color: #8a6a55; }
+.game-result { text-align: center; padding: calc(var(--u) * 3) 0; font-size: calc(var(--u) * 6); }
+.game-result p { margin: calc(var(--u) * 1) 0 0; font-size: calc(var(--u) * 5); color: var(--berry); font-weight: 800; }
+.game-result + .grid button { padding: calc(var(--u) * 2.6); border: 0; border-radius: 99px; background: var(--berry); color: #fff; font-weight: 800; }
+.game-result + .grid button.ghost { background: #e9d6bd; color: var(--ink); }
+
+.in-game .nav, .in-game .action, .in-game .goal { visibility: hidden; }
+.game-layer { position: absolute; inset: 0; z-index: 15; touch-action: none; }
+.game-bar {
+  position: absolute; left: 3%; right: 3%; bottom: 2%; display: flex; gap: 3cqw; align-items: center; justify-content: space-between;
+  padding: 2cqw 2cqw 2cqw 4cqw; border-radius: 99px; background: linear-gradient(#5b2a1a, #3b1a12); color: #fff3df; font-size: 3.8cqw;
+}
+.game-time { min-width: 8cqw; text-align: center; font-weight: 900; color: #ffd24d; font-size: 5cqw; }
+.game-quit { width: 8cqw; height: 8cqw; border: 0; border-radius: 50%; background: #ffffff22; color: #fff; font-size: 5cqw; line-height: 1; }
+.game-hint {
+  position: absolute; left: 50%; top: 60%; transform: translateX(-50%); margin: 0; padding: 2cqw 4cqw; border-radius: 99px;
+  background: #fffe; font-size: 3.6cqw; font-weight: 800; white-space: nowrap; animation: hint 2.6s ease forwards; pointer-events: none;
+}
+@keyframes hint { 80% { opacity: 1; } to { opacity: 0; } }
+.runner { position: absolute; width: 17%; padding: 1.5%; border: 0; background: none; touch-action: none; }
+.runner img { display: block; width: 100%; animation: scurry .16s ease-in-out infinite alternate; }
+@keyframes scurry { to { transform: translateY(-6%) rotate(-3deg); } }
+.runner.caught img { animation: poof .3s ease-out forwards; }
+@keyframes poof { to { transform: scale(1.4); opacity: 0; } }
+.laser-dot {
+  position: absolute; width: 3.6cqw; height: 3.6cqw; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none;
+  background: radial-gradient(circle, #fff 0 22%, #ff2a2a 48%, #ff2a2a00 72%); box-shadow: 0 0 3cqw 1cqw #ff3b3b77;
+  animation: flicker .12s steps(2) infinite;
+}
+@keyframes flicker { 50% { opacity: .82; } }
+.chaser { position: absolute; width: 40%; transform: translate(-50%, -83%); pointer-events: none; }
+.cat.away { opacity: 0; transition: opacity .25s; }
+
 /* Set from settings; defaults to the system "reduce motion" preference */
 .no-motion *, .no-motion *::before, .no-motion *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }

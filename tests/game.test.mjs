@@ -104,3 +104,88 @@ test('newest save wins', () => {
   assert.equal(newest({ savedAt: 5 }, { savedAt: 9 }).savedAt, 9);
   assert.equal(newest({ savedAt: 5 }, null).savedAt, 5);
 });
+
+// ---------- progress: tasks, achievements, requests, gift, mini-game rewards ----------
+import {
+  pickTasks, track, todaysTasks, claimTask, claimAchievement, claimableCount, claimDailyGift,
+  maybeRequest, requestProgress, completeRequest, finishGame, msToNextGameReward,
+  GIFT_FISH, GAME_REWARDS_PER_HOUR, MAX_GAME_COINS, REQUEST_PAUSE_MS,
+} from '../src/game/progress.js';
+
+const DAY = 24 * 3600e3;
+
+test('three distinct daily tasks, stable for the day, new the next day', () => {
+  const s = createState(T0);
+  const today = todaysTasks(s, T0).map((t) => t.id);
+  assert.equal(new Set(today).size, 3);
+  assert.deepEqual(todaysTasks(s, T0 + 1000).map((t) => t.id), today);
+  assert.deepEqual(pickTasks(s.daily.day, s), today, 'same pick on another device');
+  track(s, 'spins', 4, T0 + DAY);
+  assert.equal(s.daily.counts.spins, 4, 'counters restart on a new day');
+  assert.equal(s.stats.spins, 4, 'lifetime stats keep counting');
+});
+
+test('a task pays once and only when done', () => {
+  const s = createState(T0);
+  const [task] = todaysTasks(s, T0);
+  assert.equal(claimTask(s, task.id, T0), false);
+  track(s, task.event, task.target, T0);
+  assert.equal(claimableCount(s, T0), 1);
+  const before = { coins: s.coins, fish: s.fish, crystals: s.crystals };
+  assert.ok(claimTask(s, task.id, T0));
+  for (const k of Object.keys(before)) assert.equal(s[k], before[k] + (task.reward[k] || 0));
+  assert.equal(claimTask(s, task.id, T0), false, 'no double claim');
+});
+
+test('achievements pay once', () => {
+  const s = createState(T0);
+  s.stats.spins = 100;
+  assert.ok(claimAchievement(s, 'spins100'));
+  assert.equal(s.crystals, 5);
+  assert.equal(claimAchievement(s, 'spins100'), false);
+  assert.equal(claimAchievement(s, 'spins500'), false);
+});
+
+test('daily gift once per day', () => {
+  const s = createState(T0);
+  s.fish = 0;
+  assert.ok(claimDailyGift(s, T0));
+  assert.equal(claimDailyGift(s, T0 + 1000), false);
+  assert.ok(claimDailyGift(s, T0 + DAY));
+  assert.equal(s.fish, GIFT_FISH * 2);
+});
+
+test('requests appear after a pause, count only new activity and reward once', () => {
+  const s = createState(T0);
+  assert.equal(maybeRequest(s, T0), null, 'not right at the first launch');
+  s.stats.pets = 7;
+  const r = maybeRequest(s, T0 + 60e3, () => 0); // first request = pet x3
+  assert.equal(r.id, 'pet');
+  assert.equal(maybeRequest(s, T0 + 60e3), null, 'one request at a time');
+  track(s, 'pets', 2, T0);
+  assert.equal(completeRequest(s, T0), false);
+  track(s, 'pets', 1, T0);
+  assert.equal(requestProgress(s), 3);
+  const fish = s.fish;
+  assert.ok(completeRequest(s, T0));
+  assert.equal(s.fish, fish + 2);
+  assert.equal(s.requestAt, T0 + REQUEST_PAUSE_MS);
+});
+
+test('mini-game coins are capped and limited per hour, games always count', () => {
+  const s = createState(T0);
+  assert.equal(finishGame(s, 100, T0), MAX_GAME_COINS);
+  for (let i = 1; i < GAME_REWARDS_PER_HOUR; i++) assert.equal(finishGame(s, 5, T0 + i), 10);
+  assert.equal(finishGame(s, 5, T0 + 10), 0, 'limit reached');
+  assert.ok(msToNextGameReward(s, T0 + 10) > 0);
+  assert.equal(s.stats.games, GAME_REWARDS_PER_HOUR + 1);
+  assert.equal(finishGame(s, 5, T0 + 3600e3 + 1), 10, 'next hour pays again');
+});
+
+test('old saves without new fields still load', () => {
+  const s = normalize({ v: 1, coins: 10, stats: { spins: 3 } }, T0);
+  assert.equal(s.stats.spins, 3);
+  assert.equal(s.stats.pets, 0);
+  assert.deepEqual(s.achievements, []);
+  assert.equal(s.settings.music, true);
+});
