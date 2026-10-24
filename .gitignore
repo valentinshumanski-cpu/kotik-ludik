@@ -1,0 +1,7 @@
+node_modules/
+dist/
+# Large masters and the old prototype stay local; the game uses public/assets (built by `npm run assets`).
+Refs/
+old-version/
+*.zip
+.claude/

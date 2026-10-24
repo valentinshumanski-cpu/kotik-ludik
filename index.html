@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Котик-лудик</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="hud">
+      <div class="pill" id="coinsPill"><img src="assets/sym-coin.webp" alt="Монетки"><b id="coins">0</b></div>
+      <div class="pill" id="crystalsPill"><span class="emoji" aria-hidden="true">💎</span><b id="crystals">0</b><span class="sr">кристаллов</span></div>
+      <div class="pill" id="fishPill"><img src="assets/sym-fish.webp" alt="Рыбки"><b id="fish">0</b><small id="fishTimer"></small></div>
+      <button class="pill gear" id="settingsButton" aria-label="Настройки">⚙</button>
+    </header>
+
+    <main class="stage" id="stage">
+      <div class="wall"></div>
+      <img class="o floor" src="assets/floor.webp" alt="">
+      <img class="o window-view" src="assets/window-view.webp" alt="">
+      <img class="o window-frame" src="assets/window-frame.webp" alt="">
+      <img class="o curtain-left" src="assets/curtain-left.webp" alt="">
+      <img class="o curtain-right" src="assets/curtain-right.webp" alt="">
+      <img class="o windowsill" src="assets/windowsill.webp" alt="">
+      <img class="o nightlight" src="assets/nightlight.webp" alt="">
+      <img class="o lamp" src="assets/lamp.webp" alt="">
+      <div class="o bookcase">
+        <img src="assets/bookcase.webp" alt="">
+        <img class="book b1" src="assets/book-blue.webp" alt="">
+        <img class="book b2" src="assets/book-ochre.webp" alt="">
+        <img class="book b3" src="assets/book-burgundy.webp" alt="">
+        <img class="shelf-frame" src="assets/photo-frame.webp" alt="">
+        <img class="shelf-plant" src="assets/plant-trailing.webp" alt="">
+      </div>
+      <div class="o place place-plant" data-place="plant"></div>
+      <div class="o place place-rug" data-place="rug"></div>
+
+      <div class="o cabinet">
+        <div class="reel" id="reel0"></div>
+        <div class="reel" id="reel1"></div>
+        <div class="reel" id="reel2"></div>
+        <img class="cabinet-img" src="assets/cabinet.webp" alt="Кошачий автомат">
+        <p class="plaque" id="result" aria-live="polite">Удача любит котиков!</p>
+        <button class="spin" id="spinButton">Крутить <span class="spin-cost">🐟1</span></button>
+      </div>
+      <img class="o lever" id="lever" src="assets/lever.webp" alt="">
+      <img class="o cushion" src="assets/cushion.webp" alt="">
+      <button class="o cat" id="cat" aria-label="Погладить Алекса"><img id="catImg" alt="Котик Алекс"></button>
+
+      <div class="o place place-bed" data-place="bed"></div>
+      <div class="o place place-scratcher" data-place="scratcher"></div>
+      <div class="o place place-toy" data-place="toy"></div>
+
+      <button class="o action pet" id="petButton">🤚 Погладить</button>
+      <button class="o action play" id="playButton">🎮 Играть</button>
+      <button class="o goal" id="goalCard"></button>
+      <p class="o bubble" id="bubble" hidden></p>
+      <div class="o fx" id="fx" aria-hidden="true"></div>
+    </main>
+
+    <nav class="nav">
+      <button class="active" data-panel="room">🏠<span>Комната</span></button>
+      <button data-panel="collection">📖<span>Коллекция</span></button>
+      <button data-panel="shop">🛒<span>Магазин</span></button>
+      <button data-panel="tasks">📋<span>Задания</span></button>
+    </nav>
+
+    <dialog class="sheet" id="panel">
+      <header><h2 id="panelTitle"></h2><button id="panelClose" aria-label="Закрыть">×</button></header>
+      <div class="sheet-body" id="panelBody"></div>
+    </dialog>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
