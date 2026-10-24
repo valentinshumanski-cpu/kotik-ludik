@@ -66,6 +66,8 @@ function renderRoom(justPlaced) {
     if (el.dataset.item === item.id) continue;
     el.dataset.item = item.id;
     el.innerHTML = `<img src="${asset(item.img)}" alt="${item.name}"${item.id === justPlaced ? ' class="appear"' : ''}>`;
+    // drop the one-shot class so ambient sway (plants) can take over after the landing
+    el.firstChild.addEventListener('animationend', (e) => e.target.classList.remove('appear'), { once: true });
   }
 }
 
@@ -73,15 +75,26 @@ const renderAll = (justPlaced) => { renderHud(); renderGoal(); renderRoom(justPl
 
 // ---------- cat ----------
 function setPose(next, ms = 0) {
+  const img = $('catImg');
+  const src = catSrc(next);
+  // Cross-fade: the old pose fades out on top of the new one. Blinks stay instant or they look mushy.
+  if (img.getAttribute('src') && img.getAttribute('src') !== src && next !== 'blink' && pose !== 'blink' && motionOn()) {
+    const prev = $('catPrev');
+    prev.src = img.getAttribute('src');
+    prev.classList.remove('fade');
+    void prev.offsetWidth;
+    prev.classList.add('fade');
+  }
   pose = next;
-  $('catImg').src = catSrc(next);
+  img.src = src;
+  $('cat').classList.toggle('sleeping', next === 'sleep');
   clearTimeout(poseTimer);
   if (ms) poseTimer = setTimeout(() => setPose('calm'), ms);
 }
 
 function react(className, nextPose, ms) {
   const cat = $('cat');
-  cat.classList.remove('joy', 'hype');
+  cat.classList.remove('joy', 'hype', 'squish', 'waiting');
   void cat.offsetWidth;
   if (className) cat.classList.add(className);
   setPose(nextPose, ms);
@@ -111,17 +124,40 @@ function say(text, ms = 2200) {
   bubbleTimer = setTimeout(() => { bubble.hidden = true; }, ms);
 }
 
-function hearts(count = 3) {
-  const fx = $('fx');
+// Floating particles (hearts, sparkles, reward text) at x/y in % of the stage.
+function burst(cls, text, count, x, y, spread = 14) {
   for (let i = 0; i < count; i++) {
-    const h = document.createElement('span');
-    h.className = 'heart';
-    h.textContent = '♥';
-    h.style.left = `${42 + Math.random() * 16}%`;
-    h.style.top = `${24 + Math.random() * 6}%`;
-    h.style.animationDelay = `${i * 120}ms`;
-    fx.append(h);
-    setTimeout(() => h.remove(), 1400 + i * 120);
+    const p = document.createElement('span');
+    p.className = cls;
+    p.textContent = text;
+    p.style.left = `${x + (Math.random() - 0.5) * spread}%`;
+    p.style.top = `${y + (Math.random() - 0.5) * spread * 0.4}%`;
+    p.style.animationDelay = `${i * 110}ms`;
+    $('fx').append(p);
+    setTimeout(() => p.remove(), 1500 + i * 110);
+  }
+}
+const hearts = (count = 3) => burst('heart', '♥', count, 50, 27);
+
+// Centre of an element in % of the stage, to aim particles at it.
+function stagePoint(el) {
+  const s = $('stage').getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  return [((r.left + r.width / 2 - s.left) / s.width) * 100, ((r.top + r.height / 2 - s.top) / s.height) * 100];
+}
+
+function confetti(count = 26) {
+  if (!motionOn()) return;
+  const colors = ['#ff6b7d', '#ffd56b', '#7bd3f7', '#a77bf3', '#7fdc8a'];
+  for (let i = 0; i < count; i++) {
+    const c = document.createElement('i');
+    c.className = 'confetti';
+    c.style.left = `${Math.random() * 100}%`;
+    c.style.background = colors[i % colors.length];
+    c.style.animationDuration = `${1.4 + Math.random()}s`;
+    c.style.animationDelay = `${Math.random() * 300}ms`;
+    $('fx').append(c);
+    setTimeout(() => c.remove(), 2800);
   }
 }
 
@@ -129,7 +165,7 @@ function onPet() {
   unlockAudio();
   wake();
   const gotFish = pet(state);
-  react(null, 'pet', 1200);
+  react('squish', 'pet', 1200);
   hearts();
   sfx.purr();
   haptic('soft');
@@ -194,7 +230,7 @@ function spin() {
   $('lever').classList.add('pull');
   $('result').textContent = 'Крутим…';
   reels.forEach((r) => r.classList.remove('win'));
-  react(null, 'wait');
+  react('waiting', 'wait');
 
   const durations = reels.map((_, i) => (motionOn() ? 1200 + i * 330 : 80 * (i + 1)));
   sfx.spinStart(durations[2] / 1000);
@@ -227,6 +263,11 @@ function reveal(result) {
   const { coins = 0, fish = 0, crystals = 0 } = result.reward;
   const parts = [coins && `+${coins} 🪙`, fish && `+${fish} 🐟`, crystals && `+${crystals} 💎`].filter(Boolean);
   $('result').textContent = parts.length ? `${result.text} ${parts.join(' ')}` : result.text;
+  if (parts.length) burst('reward', parts.join(' '), 1, 50, 64, 0);
+  const big = ['bell', 'paw', 'crystal', 'fish'].includes(result.kind);
+  if (big && motionOn()) { const c = document.querySelector('.cabinet'); c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake'); }
+  if (result.kind === 'paw' || result.kind === 'crystal') confetti();
+  if (big) burst('spark', '✦', 6, 50, 30, 30);
   if (coins) flyCoins($('reel1'), 'coinsPill', Math.min(8, 2 + Math.round(coins / 15)));
   if (fish) flyCoins($('reel1'), 'fishPill', 3);
   setTimeout(() => { shown = null; renderHud(); renderGoal(); }, motionOn() ? 650 : 0);
@@ -250,6 +291,8 @@ function buy(id) {
   renderAll(id);
   react('hype', 'hype', 1800);
   hearts(4);
+  const placed = document.querySelector(`[data-place="${itemById(id).place}"]`);
+  if (placed) burst('spark', '✦', 6, ...stagePoint(placed), 18);
   say('Ура, обновка! 💛');
   return true;
 }
