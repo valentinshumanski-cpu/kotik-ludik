@@ -32,6 +32,7 @@ let saveWarned = false;
 let stopGame = null;
 let lastGame = null;
 let feeding = false;
+let lastMeow = 0;
 
 // Audio may only start after a tap; music joins it when enabled and the app is in front.
 function audioOn() {
@@ -160,6 +161,7 @@ function afterActivity() {
     haptic('success');
     shown = null;
     say(`Спасибо! 💛 +${REQUEST_REWARD.fish} 🐟`, 2600);
+    setTimeout(() => sfx.meow(true), 300);
   } else if (bubbleTimer === null) showRequest(); // refresh the progress unless a message is showing
   save();
   renderHud();
@@ -210,6 +212,7 @@ function onPet() {
   hearts();
   sfx.purr();
   haptic('soft');
+  if (Date.now() - lastMeow > 8000 && Math.random() < 0.18) { lastMeow = Date.now(); setTimeout(() => sfx.meow(), 450); } // now and then
   if (gotFish) {
     shown = null;
     say('Мур! Держи рыбку 🐟');
@@ -314,7 +317,7 @@ function reveal(result) {
 
   if (result.kind === 'none') react(null, 'calm');
   else if (result.kind === 'pair') { react('joy', 'joy', 1300); haptic('light'); }
-  else if (['paw', 'crystal', 'fish'].includes(result.kind)) { react('hype', 'hype', 2200); haptic('success'); hearts(5); }
+  else if (['paw', 'crystal', 'fish'].includes(result.kind)) { react('hype', 'hype', 2200); haptic('success'); hearts(5); setTimeout(() => sfx.meow(true), 500); }
   else if (result.kind === 'bell') { react('hype', 'super', 1800); haptic('success'); }
   else { react('joy', 'happy', 1500); haptic('success'); }
   if (state.target && state.coins >= itemById(state.target).price && state.coins - coins < itemById(state.target).price) {
@@ -339,30 +342,65 @@ function onFeed() {
   shown = null;
   save();
   renderHud();
-  const bowlImg = $('bowl').querySelector('img');
-  bowlImg.src = asset(bowlItem.full);
-  const [bx, by] = stagePoint($('bowl'));
+  wake();
+  const bowl = $('bowl');
+  const food = document.createElement('img'); // full bowl on top of the empty one, fades out lick by lick
+  food.className = 'food';
+  food.src = asset(bowlItem.full);
+  bowl.append(food);
+
+  // Geometry in % of the stage. Eater is 46% wide, anchored at the paw line (83% of its canvas).
+  // In the eat pose the head sits at 69% of the canvas width -> 0.19 * 46 = 8.7% right of the anchor.
+  const s = $('stage').getBoundingClientRect();
+  const b = bowl.getBoundingClientRect();
+  const bowlX = ((b.left + b.width / 2 - s.left) / s.width) * 100;
+  const bowlTop = ((b.top - s.top) / s.height) * 100;
+  const bowlH = (b.height / s.height) * 100;
+  const land = { x: bowlX - 8.7, y: bowlTop + bowlH * 0.45 }; // paws behind the bowl, mouth inside it
   const eater = document.createElement('img');
-  eater.className = 'chaser';
+  eater.className = 'eater';
   eater.alt = '';
-  eater.src = catSrc('eat');
-  // the eating pose faces right with the head at ~78% of the canvas (40% of stage wide): head over the bowl
-  eater.style.left = `${bx - 11}%`;
-  eater.style.top = `${by + 2.5}%`;
-  $('bowl').before(eater); // bowl stays in front of the face
+  eater.src = catSrc('run');
+  bowl.before(eater); // the bowl's front rim covers the chin
   $('cat').classList.add('away');
-  sfx.purr();
-  haptic('light');
-  burst('heart', '♥', 3, bx - 6, by - 10, 10);
-  setTimeout(() => {
+
+  // Up on the machine Alex is drawn larger (62% vs 46% wide), so the seat end of a jump is scaled.
+  const seat = { x: 48, y: 48, scale: 1.35 };
+  const at = (p, extra = '') => ({ left: `${p.x}%`, top: `${p.y}%`, transform: `translate(-50%, -83%) scale(${p.scale ?? 1}) ${extra}` });
+  const wait = (ms) => new Promise((r) => setTimeout(r, motionOn() ? ms : 1));
+  // A timer backs up the animation: a paused or backgrounded WebView must not leave Alex stuck at the bowl.
+  const jump = (from, to, flip) => Promise.race([wait(700), eater.animate(
+    [at(from, flip), at({ x: (from.x + to.x) / 2, y: Math.min(from.y, to.y) - 8, scale: ((from.scale ?? 1) + (to.scale ?? 1)) / 2 }, flip), at(to, flip)],
+    { duration: motionOn() ? 620 : 1, easing: 'ease-in-out', fill: 'forwards' },
+  ).finished]);
+
+  (async () => {
+    sfx.hop();
+    await jump(seat, land, '');
+    eater.src = catSrc('eat');
+    for (let lick = 1; lick <= 3; lick++) {
+      eater.animate([at(land), at({ x: land.x + 0.4, y: land.y + 0.9 }), at(land)], { duration: 420, easing: 'ease-in-out' });
+      await wait(200);
+      food.style.opacity = String(1 - lick / 3);
+      sfx.lick();
+      haptic('light');
+      burst('heart', lick === 3 ? '♥' : '·', 1, bowlX, bowlTop - 2, 6);
+      await wait(380);
+    }
+    sfx.purr();
+    await wait(300);
+    eater.src = catSrc('run');
+    sfx.hop();
+    await jump(land, seat, 'scaleX(-1)');
     eater.remove();
+    food.remove();
     $('cat').classList.remove('away');
-    bowlImg.src = asset(bowlItem.img);
     feeding = false;
     react('joy', 'happy', 1200);
+    sfx.meow(true);
     say('Вкусно! Спасибо 💛');
     afterActivity();
-  }, 2600);
+  })();
 }
 
 // ---------- goal card & panels ----------
@@ -525,7 +563,7 @@ function playGame(kind) {
       if (quit && !catches) return showRequest(); // leaving at once does not count as a game
       const coins = finishGame(state, catches);
       lastGame = { kind, catches, coins };
-      if (coins) { shown = null; react('hype', 'hype', 1600); hearts(3); }
+      if (coins) { shown = null; react('hype', 'hype', 1600); hearts(3); sfx.meow(true); }
       afterActivity();
       openPanel('result');
     },

@@ -324,6 +324,8 @@ img { -webkit-user-drag: none; }
   animation: flicker .12s steps(2) infinite;
 }
 @keyframes flicker { 50% { opacity: .82; } }
+.eater { position: absolute; width: 46%; pointer-events: none; }
+.place-bowl .food { position: absolute; inset: 0; width: 100%; transition: opacity .3s; }
 .chaser { position: absolute; width: 40%; transform: translate(-50%, -83%); pointer-events: none; }
 .cat.away { opacity: 0; transition: opacity .25s; }
 
