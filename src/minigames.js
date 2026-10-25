@@ -135,7 +135,7 @@ function runLaser(game) {
       const step = Math.min(dist, SPEED * dt);
       pos.x += (dx / dist) * step;
       pos.y += ((dy / dist) * step) / ASPECT;
-      setPose('play');
+      setPose('run');
       chaser.style.transform = `translate(-50%, -83%) scaleX(${dx < 0 ? -1 : 1})`;
       if (armed && dist < 7) {
         armed = false;

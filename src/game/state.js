@@ -1,5 +1,5 @@
 // Player state and the rules that change it. Pure functions, no DOM, no storage.
-import { ITEMS, BREEDS, TASKS, ACHIEVEMENTS, REQUESTS, itemById } from '../data/content.js';
+import { ITEMS, BREEDS, TASKS, ACHIEVEMENTS, REQUESTS, COLOR_PRICE, itemById } from '../data/content.js';
 import { dayKey, track } from './progress.js';
 
 export { dayKey };
@@ -9,6 +9,7 @@ export const FISH_CAP = 30;
 export const FISH_REGEN_MS = 3 * 60 * 1000;
 export const PETS_PER_FISH = 10;
 export const PET_FISH_PER_DAY = 10;
+export const FEED_BOND = 5;
 
 export function createState(now = Date.now()) {
   return {
@@ -25,7 +26,9 @@ export function createState(now = Date.now()) {
     target: 'cat-bed',
     breed: 'ginger',
     breeds: ['ginger'],
-    stats: { spins: 0, pets: 0, games: 0, catches: 0, wins: 0, buys: 0 },
+    stats: { spins: 0, pets: 0, games: 0, catches: 0, wins: 0, buys: 0, feeds: 0 },
+    colors: {}, // itemId -> chosen colour id ('base' when missing)
+    ownedColors: [], // 'itemId:colorId' bought extras
     daily: { day: '', counts: {}, tasks: [], claimed: [] },
     achievements: [],
     request: null,
@@ -63,6 +66,10 @@ export function normalize(raw, now = Date.now()) {
     state.daily = { day: raw.daily.day, counts, tasks: ids(raw.daily.tasks, TASKS), claimed: ids(raw.daily.claimed, TASKS) };
   }
   state.achievements = ids(raw.achievements, ACHIEVEMENTS);
+  const colorKeys = new Set(ITEMS.flatMap((i) => (i.colors || []).filter((c) => c.id !== 'base').map((c) => `${i.id}:${c.id}`)));
+  state.ownedColors = Array.isArray(raw.ownedColors) ? [...new Set(raw.ownedColors.filter((k) => colorKeys.has(k)))] : [];
+  state.colors = {};
+  for (const [id, color] of Object.entries(raw.colors || {})) if (hasColor(state, id, color)) state.colors[id] = color;
   state.request = REQUESTS.some((r) => r.id === raw.request?.id) ? { id: raw.request.id, base: num(raw.request.base, 0) } : null;
   state.requestAt = num(raw.requestAt, base.requestAt);
   state.giftDay = typeof raw.giftDay === 'string' ? raw.giftDay : '';
@@ -154,3 +161,36 @@ export function buyBreed(state, id) {
 
 // Picks the newer of two saves (local vs Telegram cloud).
 export const newest = (a, b) => ((b?.savedAt || 0) > (a?.savedAt || 0) ? b : a);
+
+// ---------- colours ----------
+export const hasColor = (state, itemId, colorId) =>
+  Boolean(itemById(itemId)?.colors?.some((c) => c.id === colorId)) && (colorId === 'base' || state.ownedColors.includes(`${itemId}:${colorId}`));
+
+// Image of an item in its chosen colour.
+export function itemImg(state, item) {
+  const color = item.colors?.find((c) => c.id === state.colors[item.id]);
+  return color ? color.img : item.img;
+}
+
+// Buys a colour if needed (item must be owned), then puts it on.
+export function chooseColor(state, itemId, colorId) {
+  if (!state.owned.includes(itemId) || !itemById(itemId)?.colors?.some((c) => c.id === colorId)) return false;
+  if (!hasColor(state, itemId, colorId)) {
+    if (state.coins < COLOR_PRICE) return false;
+    state.coins -= COLOR_PRICE;
+    state.ownedColors.push(`${itemId}:${colorId}`);
+  }
+  state.colors[itemId] = colorId;
+  return true;
+}
+
+// ---------- feeding: one fish from the stock goes into the bowl ----------
+export function feed(state, now = Date.now()) {
+  regenFish(state, now);
+  if (!state.placed.bowl || state.fish < 1) return false;
+  if (state.fish >= FISH_CAP) state.fishAt = now;
+  state.fish -= 1;
+  state.bond += FEED_BOND;
+  track(state, 'feeds', 1, now);
+  return true;
+}

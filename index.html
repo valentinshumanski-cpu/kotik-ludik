@@ -11,9 +11,9 @@
   <div class="app">
     <header class="hud">
       <div class="pill" id="coinsPill"><img src="assets/sym-coin.webp" alt="Монетки"><b id="coins">0</b></div>
-      <div class="pill" id="crystalsPill"><span class="emoji" aria-hidden="true">💎</span><b id="crystals">0</b><span class="sr">кристаллов</span></div>
+      <div class="pill" id="crystalsPill"><img src="assets/sym-crystal.webp" alt="Кристаллы"><b id="crystals">0</b></div>
       <div class="pill" id="fishPill"><img src="assets/sym-fish.webp" alt="Рыбки"><b id="fish">0</b><small id="fishTimer"></small></div>
-      <button class="pill gear" id="settingsButton" aria-label="Настройки">⚙</button>
+      <button class="pill gear" id="settingsButton" aria-label="Настройки"><img src="assets/icon-settings.webp" alt=""></button>
     </header>
 
     <main class="stage" id="stage">
@@ -53,6 +53,7 @@
       <div class="o place place-bed" data-place="bed"></div>
       <div class="o place place-scratcher" data-place="scratcher"></div>
       <div class="o place place-toy" data-place="toy"></div>
+      <button class="o place place-bowl" data-place="bowl" id="bowl" aria-label="Покормить Алекса"></button>
 
       <button class="o action pet" id="petButton">🤚 Погладить</button>
       <button class="o action play" id="playButton">🎮 Играть</button>
@@ -62,10 +63,10 @@
     </main>
 
     <nav class="nav">
-      <button class="active" data-panel="room">🏠<span>Комната</span></button>
-      <button data-panel="collection">📖<span>Коллекция</span></button>
-      <button data-panel="shop">🛒<span>Магазин</span></button>
-      <button data-panel="tasks">📋<span>Задания</span></button>
+      <button class="active" data-panel="room"><img src="assets/nav-room.webp" alt=""><span>Комната</span></button>
+      <button data-panel="collection"><img src="assets/nav-collection.webp" alt=""><span>Коллекция</span></button>
+      <button data-panel="shop"><img src="assets/nav-shop.webp" alt=""><span>Магазин</span></button>
+      <button data-panel="tasks"><img src="assets/nav-tasks.webp" alt=""><span>Задания</span></button>
     </nav>
 
     <dialog class="sheet" id="panel">

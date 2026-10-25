@@ -189,3 +189,46 @@ test('old saves without new fields still load', () => {
   assert.deepEqual(s.achievements, []);
   assert.equal(s.settings.music, true);
 });
+
+// ---------- colours and feeding ----------
+import { chooseColor, itemImg, feed } from '../src/game/state.js';
+import { itemById, COLOR_PRICE } from '../src/data/content.js';
+
+test('colours need the item, cost once, then switch for free', () => {
+  const s = createState(T0);
+  s.coins = 100;
+  assert.equal(chooseColor(s, 'cat-bed', 'blue'), false, 'bed not owned yet');
+  buyItem(s, 'cat-bed');
+  const coins = s.coins;
+  assert.ok(chooseColor(s, 'cat-bed', 'blue'));
+  assert.equal(s.coins, coins - COLOR_PRICE);
+  assert.equal(itemImg(s, itemById('cat-bed')), 'cat-bed-blue');
+  assert.ok(chooseColor(s, 'cat-bed', 'base'));
+  assert.ok(chooseColor(s, 'cat-bed', 'blue'));
+  assert.equal(s.coins, coins - COLOR_PRICE, 'owned colour is free');
+  assert.equal(chooseColor(s, 'bed-basket', 'blue'), false, 'basket has no colours');
+  const back = normalize(JSON.parse(JSON.stringify(s)), T0);
+  assert.equal(itemImg(back, itemById('cat-bed')), 'cat-bed-blue', 'survives save/load');
+});
+
+test('feeding needs a bowl and a fish', () => {
+  const s = createState(T0);
+  assert.equal(feed(s, T0), false, 'no bowl');
+  s.coins = 40;
+  buyItem(s, 'bowl-ceramic', T0);
+  s.fish = 0;
+  assert.equal(feed(s, T0), false, 'no fish');
+  s.fish = 3;
+  assert.ok(feed(s, T0));
+  assert.deepEqual([s.fish, s.bond, s.stats.feeds], [2, 5, 1]);
+});
+
+test('feed request and task only come with a bowl', () => {
+  const s = createState(T0);
+  for (let i = 0; i < 20; i++) {
+    s.request = null;
+    s.requestAt = 0;
+    assert.notEqual(maybeRequest(s, T0, () => i / 20).id, 'feed');
+  }
+  assert.ok(!pickTasks('2026-10-25', s).includes('feed2'));
+});

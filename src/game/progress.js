@@ -16,7 +16,7 @@ const hash = (text) => [...text].reduce((h, c) => (Math.imul(h, 31) + c.charCode
 
 // Same 3 tasks all day on every device: the pick depends only on the date.
 export function pickTasks(day, state) {
-  return TASKS.filter((t) => t.event !== 'buys' || state.owned.length < ITEMS.length)
+  return TASKS.filter((t) => (t.event !== 'buys' || state.owned.length < ITEMS.length) && (!t.needs || state.placed[t.needs]))
     .sort((a, b) => hash(day + a.id) - hash(day + b.id))
     .slice(0, 3)
     .map((t) => t.id);
@@ -80,7 +80,8 @@ export const currentRequest = (state) => (state.request ? REQUESTS.find((r) => r
 
 export function maybeRequest(state, now = Date.now(), random = Math.random) {
   if (state.request || now < state.requestAt) return null;
-  const r = REQUESTS[Math.floor(random() * REQUESTS.length)];
+  const doable = REQUESTS.filter((x) => !x.needs || state.placed[x.needs]);
+  const r = doable[Math.floor(random() * doable.length)];
   state.request = { id: r.id, base: state.stats[r.event] || 0 };
   return r;
 }

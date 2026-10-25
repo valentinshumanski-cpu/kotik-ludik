@@ -3,11 +3,11 @@
 
 export const SYMBOLS = [
   { id: 'coin', name: 'монетка', weight: 22, img: 'sym-coin' },
-  { id: 'yarn', name: 'клубок', weight: 16, img: 'yarn' },
-  { id: 'bell', name: 'колокольчик', weight: 10, emoji: '🔔' }, // shortcut: emoji until the bell sprite is generated
+  { id: 'yarn', name: 'клубок', weight: 16, img: 'sym-yarn' },
+  { id: 'bell', name: 'колокольчик', weight: 10, img: 'sym-bell' },
   { id: 'fish', name: 'рыбка', weight: 7, img: 'sym-fish' },
   { id: 'paw', name: 'лапка', weight: 6, img: 'sym-paw' },
-  { id: 'crystal', name: 'кристалл', weight: 5, emoji: '💎' }, // shortcut: emoji until the crystal sprite is generated
+  { id: 'crystal', name: 'кристалл', weight: 5, img: 'sym-crystal' },
 ];
 
 // Three of a kind; checked in this order so the most valuable line wins.

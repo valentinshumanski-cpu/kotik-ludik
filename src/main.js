@@ -1,6 +1,6 @@
 import { SYMBOLS, spinReels, evaluate } from './game/slot.js';
-import { applySpin, regenFish, msToNextFish, pet, buyItem, placeItem, buyBreed, FISH_CAP } from './game/state.js';
-import { ITEMS, PLACES, BREEDS, ACHIEVEMENTS, itemById } from './data/content.js';
+import { applySpin, regenFish, msToNextFish, pet, buyItem, placeItem, buyBreed, chooseColor, itemImg, feed, FISH_CAP } from './game/state.js';
+import { ITEMS, PLACES, BREEDS, ACHIEVEMENTS, COLOR_PRICE, itemById } from './data/content.js';
 import {
   todaysTasks, taskProgress, claimTask, achievementProgress, claimAchievement, claimableCount, claimDailyGift,
   maybeRequest, currentRequest, requestProgress, completeRequest, finishGame, msToNextGameReward,
@@ -31,6 +31,7 @@ let bubbleTimer = null;
 let saveWarned = false;
 let stopGame = null;
 let lastGame = null;
+let feeding = false;
 
 // Audio may only start after a tap; music joins it when enabled and the app is in front.
 function audioOn() {
@@ -80,9 +81,10 @@ function renderRoom(justPlaced) {
   for (const el of document.querySelectorAll('[data-place]')) {
     const item = itemById(state.placed[el.dataset.place]);
     if (!item) { el.innerHTML = ''; continue; }
-    if (el.dataset.item === item.id) continue;
-    el.dataset.item = item.id;
-    el.innerHTML = `<img src="${asset(item.img)}" alt="${item.name}"${item.id === justPlaced ? ' class="appear"' : ''}>`;
+    const key = `${item.id}:${state.colors[item.id] || 'base'}`;
+    if (el.dataset.item === key) continue;
+    el.dataset.item = key;
+    el.innerHTML = `<img src="${asset(itemImg(state, item))}" alt="${item.name}"${item.id === justPlaced ? ' class="appear"' : ''}>`;
     // drop the one-shot class so ambient sway (plants) can take over after the landing
     el.firstChild.addEventListener('animationend', (e) => e.target.classList.remove('appear'), { once: true });
   }
@@ -218,7 +220,7 @@ function onPet() {
 // ---------- slot ----------
 function symbolMarkup(id) {
   const s = symbolById[id];
-  return s.img ? `<img class="sym" src="${asset(s.img)}" alt="${s.name}">` : `<span class="sym emoji" role="img" aria-label="${s.name}">${s.emoji}</span>`;
+  return `<img class="sym" src="${asset(s.img)}" alt="${s.name}">`;
 }
 
 function flyCoins(fromEl, toPill, count) {
@@ -321,6 +323,48 @@ function reveal(result) {
   afterActivity();
 }
 
+// ---------- feeding: Alex jumps down and eats next to the bowl ----------
+function onFeed() {
+  const bowlItem = itemById(state.placed.bowl);
+  if (!bowlItem || spinning || stopGame || feeding) return;
+  audioOn();
+  wake();
+  if (!feed(state)) {
+    sfx.denied();
+    haptic('warning');
+    say('Нет рыбок для миски 🐟');
+    return;
+  }
+  feeding = true;
+  shown = null;
+  save();
+  renderHud();
+  const bowlImg = $('bowl').querySelector('img');
+  bowlImg.src = asset(bowlItem.full);
+  const [bx, by] = stagePoint($('bowl'));
+  const eater = document.createElement('img');
+  eater.className = 'chaser';
+  eater.alt = '';
+  eater.src = catSrc('eat');
+  // the eating pose faces right with the head at ~78% of the canvas (40% of stage wide): head over the bowl
+  eater.style.left = `${bx - 11}%`;
+  eater.style.top = `${by + 2.5}%`;
+  $('bowl').before(eater); // bowl stays in front of the face
+  $('cat').classList.add('away');
+  sfx.purr();
+  haptic('light');
+  burst('heart', '♥', 3, bx - 6, by - 10, 10);
+  setTimeout(() => {
+    eater.remove();
+    $('cat').classList.remove('away');
+    bowlImg.src = asset(bowlItem.img);
+    feeding = false;
+    react('joy', 'happy', 1200);
+    say('Вкусно! Спасибо 💛');
+    afterActivity();
+  }, 2600);
+}
+
 // ---------- goal card & panels ----------
 function buy(id) {
   if (!buyItem(state, id)) { sfx.denied(); haptic('error'); return false; }
@@ -356,10 +400,16 @@ const panels = {
           : owned ? `<button data-place-item="${item.id}">Поставить</button>`
           : state.coins >= item.price ? `<button data-buy="${item.id}">Купить · 🪙${item.price}</button>`
           : `<button class="ghost" data-target="${item.id}">${state.target === item.id ? 'Копим ✓' : 'Копить'} · 🪙${item.price}</button>`;
-        return `<div class="card"><img src="${asset(item.img)}" alt=""><b>${item.name}</b>${button}</div>`;
+        const swatches = owned && item.colors ? `<div class="swatches">${item.colors.map((c) => {
+          const on = (state.colors[item.id] || 'base') === c.id;
+          const have = c.id === 'base' || state.ownedColors.includes(`${item.id}:${c.id}`);
+          return `<button class="swatch${on ? ' on' : ''}${have ? '' : ' locked'}" style="background:${c.swatch}" data-color="${item.id}:${c.id}" aria-label="${c.name}${have ? '' : `, ${COLOR_PRICE} монеток`}"></button>`;
+        }).join('')}</div>` : '';
+        return `<div class="card"><img src="${asset(itemImg(state, item))}" alt=""><b>${item.name}</b>${button}${swatches}</div>`;
       }).join('') || '<div class="card missing">Пока нет картинки предмета</div>';
-      return `<h3>${place.name}</h3><div class="grid">${cards}</div>`;
-    }).join('') + '<p class="note">Расцветки вещей появятся, когда будут готовы их картинки.</p>',
+      const hint = place.id === 'bowl' ? '<p class="note">Нажми на миску в комнате — Алекс поест (1 🐟, +привязанность).</p>' : '';
+      return `<h3>${place.name}</h3>${hint}<div class="grid">${cards}</div>`;
+    }).join('') + `<p class="note">Кружочки под купленной вещью — её цвета. Новый цвет стоит ${COLOR_PRICE} 🪙, потом переключается бесплатно.</p>`,
   },
   collection: {
     title: 'Коллекция',
@@ -495,6 +545,11 @@ $('panelBody').addEventListener('click', (e) => {
   else if (b.dataset.breed) { state.breed = b.dataset.breed; save(); setPose('calm'); sfx.click(); }
   // shortcut: test-only cheat for the owner, remove (or hide) before friends play for real
   else if (b.dataset.god) { state.coins += 10000; state.crystals += 100; state.fish += 50; shown = null; save(); renderHud(); renderGoal(); sfx.buy(); haptic('success'); }
+  else if (b.dataset.color) {
+    const [itemId, colorId] = b.dataset.color.split(':');
+    if (chooseColor(state, itemId, colorId)) { sfx.click(); save(); renderRoom(itemId); renderHud(); renderGoal(); }
+    else { sfx.denied(); haptic('error'); }
+  }
   else if (b.dataset.claimTask || b.dataset.claimAch) {
     const ok = b.dataset.claimTask ? claimTask(state, b.dataset.claimTask) : claimAchievement(state, b.dataset.claimAch);
     if (ok) { sfx.buy(); haptic('success'); shown = null; save(); renderHud(); }
@@ -532,6 +587,7 @@ $('playButton').addEventListener('click', () => {
   openPanel('play');
 });
 $('goalCard').addEventListener('click', onGoal);
+$('bowl').addEventListener('click', onFeed);
 $('settingsButton').addEventListener('click', () => openPanel('settings'));
 document.querySelectorAll('.nav button').forEach((b) => b.addEventListener('click', () => { sfx.click(); openPanel(b.dataset.panel); }));
 
