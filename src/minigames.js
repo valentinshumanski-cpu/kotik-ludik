@@ -1,7 +1,7 @@
 // Two 20-second mini-games played on the room floor. Positions are % of the stage.
 // The game only reports catches; rewards are decided by game/progress.js.
 const DURATION = 20000;
-const FLOOR = { top: 78, bottom: 90, left: 6, right: 94 }; // rug area in front of the machine (nav is hidden during games)
+const FLOOR = { top: 68, bottom: 90, left: 6, right: 94 }; // living room floor below the armchair (nav is hidden during games)
 const ASPECT = 16 / 9; // stage height / width, to measure distances in width units
 const rand = (a, b) => a + Math.random() * (b - a);
 

@@ -107,17 +107,35 @@ function setPose(next, ms = 0) {
   }
   pose = next;
   img.src = src;
-  $('cat').classList.toggle('sleeping', next === 'sleep');
+  $('lrCatImg').src = src;
+  for (const cat of document.querySelectorAll('.cat')) cat.classList.toggle('sleeping', next === 'sleep');
   clearTimeout(poseTimer);
   if (ms) poseTimer = setTimeout(() => setPose('calm'), ms);
 }
 
 function react(className, nextPose, ms) {
-  const cat = $('cat');
-  cat.classList.remove('joy', 'hype', 'squish', 'waiting');
-  void cat.offsetWidth;
-  if (className) cat.classList.add(className);
+  for (const cat of document.querySelectorAll('.cat')) {
+    cat.classList.remove('joy', 'hype', 'squish', 'waiting');
+    void cat.offsetWidth;
+    if (className) cat.classList.add(className);
+  }
   setPose(nextPose, ms);
+}
+
+// ---------- screens: main room <-> living room ----------
+let screen = 'main';
+const HEAD = { main: [50, 27], living: [31, 47] }; // where Alex's head is on each screen, % of the stage
+function onScreen() {
+  const rooms = $('rooms');
+  const now = rooms.scrollLeft > rooms.clientWidth / 2 ? 'living' : 'main';
+  if (now === screen) return;
+  screen = now;
+  document.body.dataset.screen = now;
+  $(now === 'living' ? 'living' : 'stage').append($('bubble'), $('fx')); // Alex talks where the player looks
+}
+function go(name) {
+  const rooms = $('rooms');
+  rooms.scrollTo({ left: name === 'living' ? rooms.clientWidth : 0, behavior: motionOn() ? 'smooth' : 'auto' });
 }
 
 function wake() {
@@ -180,7 +198,7 @@ function burst(cls, text, count, x, y, spread = 14) {
     setTimeout(() => p.remove(), 1500 + i * 110);
   }
 }
-const hearts = (count = 3) => burst('heart', '♥', count, 50, 27);
+const hearts = (count = 3) => burst('heart', '♥', count, ...HEAD[screen]);
 
 // Centre of an element in % of the stage, to aim particles at it.
 function stagePoint(el) {
@@ -547,8 +565,8 @@ function playGame(kind) {
   $('bubble').hidden = true;
   react(null, 'calm');
   stopGame = startGame(kind, {
-    stage: $('stage'),
-    cat: $('cat'),
+    stage: $('living'),
+    cat: $('lrCat'),
     catSrc,
     onCatch(x, y) {
       burst('spark', '✦', 5, x, y, 10);
@@ -617,13 +635,19 @@ $('panelClose').addEventListener('click', closePanel);
 $('spinButton').addEventListener('click', spin);
 $('lever').addEventListener('click', spin);
 $('cat').addEventListener('click', onPet);
+$('lrCat').addEventListener('click', onPet);
 $('petButton').addEventListener('click', onPet);
-$('playButton').addEventListener('click', () => {
+const onPlay = () => {
   audioOn();
   wake();
   react('joy', 'play', 1200);
+  go('living'); // games are played on the living room floor
   openPanel('play');
-});
+};
+$('playButton').addEventListener('click', onPlay);
+$('lrPlayButton').addEventListener('click', onPlay);
+$('rooms').addEventListener('scroll', onScreen, { passive: true });
+document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => { sfx.click(); go(b.dataset.go); }));
 $('goalCard').addEventListener('click', onGoal);
 $('bowl').addEventListener('click', onFeed);
 $('settingsButton').addEventListener('click', () => openPanel('settings'));

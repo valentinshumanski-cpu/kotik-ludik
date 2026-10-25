@@ -16,6 +16,8 @@
       <button class="pill gear" id="settingsButton" aria-label="Настройки"><img src="assets/icon-settings.webp" alt=""></button>
     </header>
 
+    <div class="rooms" id="rooms">
+    <section class="screen" data-screen="main">
     <main class="stage" id="stage">
       <div class="wall"></div>
       <img class="o floor" src="assets/floor.webp" alt="">
@@ -48,7 +50,7 @@
       </div>
       <img class="o lever" id="lever" src="assets/lever.webp" alt="">
       <img class="o cushion" src="assets/cushion.webp" alt="">
-      <button class="o cat" id="cat" aria-label="Погладить Алекса"><img id="catImg" alt="Котик Алекс"><img id="catPrev" class="cat-prev" alt=""></button>
+      <button class="o cat" id="cat" aria-label="Погладить Алекса"><img id="catImg" class="cat-pose" alt="Котик Алекс"><img id="catPrev" class="cat-prev" alt=""></button>
 
       <div class="o place place-bed" data-place="bed"></div>
       <div class="o place place-scratcher" data-place="scratcher"></div>
@@ -60,7 +62,31 @@
       <button class="o goal" id="goalCard"></button>
       <p class="o bubble" id="bubble" hidden></p>
       <div class="o fx" id="fx" aria-hidden="true"></div>
+      <button class="o arrow arrow-right" data-go="living">Гостиная ›</button>
     </main>
+    </section>
+
+    <section class="screen" data-screen="living">
+    <div class="stage living" id="living">
+      <div class="wall"></div>
+      <img class="o floor" src="assets/floor.webp" alt="">
+      <img class="o lr-view" src="assets/window-view.webp" alt="">
+      <img class="o lr-window" src="assets/window-frame.webp" alt="">
+      <img class="o lr-frame" src="assets/photo-frame.webp" alt="">
+      <img class="o lr-lamp lamp" src="assets/lamp.webp" alt="">
+      <img class="o lr-radiator" src="assets/radiator.webp" alt="">
+      <img class="o lr-rug" src="assets/rug-square.webp" alt="">
+      <img class="o lr-armchair" src="assets/armchair.webp" alt="">
+      <img class="o lr-pillow" src="assets/paw-pillow.webp" alt="">
+      <button class="o cat lr-cat" id="lrCat" aria-label="Погладить Алекса"><img id="lrCatImg" class="cat-pose" alt="Котик Алекс"></button>
+      <img class="o lr-blanket" src="assets/blanket.webp" alt="">
+      <img class="o lr-table" src="assets/side-table.webp" alt="">
+      <img class="o lr-mug" src="assets/mug.webp" alt="">
+      <button class="o action lr-play" id="lrPlayButton">🎮 Поиграть</button>
+      <button class="o arrow arrow-left" data-go="main">‹ Комната</button>
+    </div>
+    </section>
+    </div>
 
     <nav class="nav">
       <button class="active" data-panel="room"><img src="assets/nav-room.webp" alt=""><span>Комната</span></button>

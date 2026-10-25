@@ -37,6 +37,13 @@ const objects = [
   ['cabinet', `${OBJ}/slot-001-cabinet-approved-v2.png`, 1024],
   ['lever', `${OBJ}/slot-002-lever.png`, 384],
   ['reel-backing', `${OBJ}/slot-003-reel-backing.png`, 256],
+  // living room (stage 4.1), from the first environment batch
+  ['armchair', `${OBJ}/env-010-armchair.png`, 640],
+  ['blanket', `${OBJ}/env-011-blanket.png`, 512],
+  ['paw-pillow', `${OBJ}/env-012-paw-pillow.png`, 256],
+  ['side-table', `${OBJ}/env-015-side-table.png`, 384],
+  ['radiator', `${OBJ}/env-008-radiator.png`, 384],
+  ['mug', `${OBJ}/prop-005-mug.png`, 128],
   // order 2026-10-25
   ...['sym-coin', 'sym-yarn', 'sym-bell', 'sym-fish', 'sym-paw', 'sym-crystal'].map((n) => [n, `${NEW}/${n}.png`, 192]),
   ...['nav-room', 'nav-collection', 'nav-shop', 'nav-tasks', 'icon-settings'].map((n) => [n, `${NEW}/${n}.png`, 128]),
