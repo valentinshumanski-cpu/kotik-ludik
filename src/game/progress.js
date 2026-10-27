@@ -1,5 +1,5 @@
 // Daily tasks, achievements, Alex's requests, daily gift and mini-game rewards. Pure, no DOM.
-import { ITEMS, TASKS, ACHIEVEMENTS, REQUESTS } from '../data/content.js';
+import { ITEMS, TASKS, ACHIEVEMENTS, REQUESTS, GUESTS } from '../data/content.js';
 
 export const GIFT_FISH = 10;
 export const REQUEST_REWARD = { fish: 2 };
@@ -115,3 +115,61 @@ export function finishGame(state, catches, now = Date.now()) {
 
 export const msToNextGameReward = (state, now = Date.now()) =>
   state.playLog.length < GAME_REWARDS_PER_HOUR ? 0 : Math.max(0, Math.min(...state.playLog) + HOUR - now);
+
+// ---------- bond levels: petting, feeding, cartoons, requests all raise the bond ----------
+// Bond needed to reach a level: 15, 45, 90, 150, 225… (each level a bit further than the last).
+export const bondNeed = (level) => (15 * level * (level - 1)) / 2;
+export function bondLevel(bond) {
+  let level = 1;
+  while (bond >= bondNeed(level + 1)) level += 1;
+  return level;
+}
+export const levelReward = (level) => (level % 5 === 0 ? { crystals: level, fish: 10 } : { crystals: level });
+
+// Pays every level reached since the last call, once. Returns the new levels.
+export function claimBondLevels(state) {
+  const reached = bondLevel(state.bond);
+  const levels = [];
+  while (state.bondPaid < reached) {
+    state.bondPaid += 1;
+    give(state, levelReward(state.bondPaid));
+    levels.push(state.bondPaid);
+  }
+  return levels;
+}
+
+// ---------- guests ----------
+
+export const GUEST_STAY_MS = 90 * 1000;
+export const FIRST_GUEST_MS = 3 * 60 * 1000;
+export const GUEST_GIFTS = [{ fish: 3 }, { coins: 20 }, { crystals: 1 }];
+const nextGuestIn = (random) => (20 + random() * 20) * 60 * 1000; // 20–40 minutes
+
+// A friend arrives when it is time and nobody is visiting; returns the guest or null.
+export function guestArrives(state, now = Date.now(), random = Math.random) {
+  if (state.guest || now < state.guestAt) return null;
+  const friends = GUESTS.filter((g) => g.breed !== state.breed);
+  const g = friends[Math.floor(random() * friends.length)];
+  state.guest = { id: g.id, until: now + GUEST_STAY_MS, gifted: false };
+  return g;
+}
+
+export const currentGuest = (state) => (state.guest ? GUESTS.find((g) => g.id === state.guest.id) : null);
+
+// Greeting the guest the first time gives a small gift. Returns the gift or null.
+export function greetGuest(state, random = Math.random) {
+  if (!state.guest || state.guest.gifted) return null;
+  state.guest.gifted = true;
+  const gift = GUEST_GIFTS[Math.floor(random() * GUEST_GIFTS.length)];
+  give(state, gift);
+  track(state, 'guests');
+  return gift;
+}
+
+// Returns true when the guest just left.
+export function guestLeaves(state, now = Date.now(), random = Math.random) {
+  if (!state.guest || now < state.guest.until) return false;
+  state.guest = null;
+  state.guestAt = now + nextGuestIn(random);
+  return true;
+}

@@ -1,5 +1,5 @@
 // Player state and the rules that change it. Pure functions, no DOM, no storage.
-import { ITEMS, BREEDS, TASKS, ACHIEVEMENTS, REQUESTS, COLOR_PRICE, itemById } from '../data/content.js';
+import { ITEMS, BREEDS, TASKS, ACHIEVEMENTS, REQUESTS, GUESTS, COLOR_PRICE, itemById } from '../data/content.js';
 import { dayKey, track } from './progress.js';
 
 export { dayKey };
@@ -21,13 +21,16 @@ export function createState(now = Date.now()) {
     fish: FISH_CAP,
     fishAt: now,
     bond: 0,
+    bondPaid: 1, // last bond level whose reward was given
     pets: { day: dayKey(now), count: 0, fishGiven: 0 },
     owned: ITEMS.filter((item) => item.price === 0).map((item) => item.id),
     placed: { plant: 'plant-large', rug: 'rug', seat: 'armchair', 'lr-rug': 'lr-rug-tassel', 'lr-wall': 'lr-wall-cream', 'lr-floor': 'lr-floor-oak' },
     target: 'cat-bed',
     breed: 'ginger',
     breeds: ['ginger'],
-    stats: { spins: 0, pets: 0, games: 0, catches: 0, wins: 0, buys: 0, feeds: 0, tv: 0, reads: 0 },
+    stats: { spins: 0, pets: 0, games: 0, catches: 0, wins: 0, buys: 0, feeds: 0, tv: 0, reads: 0, guests: 0 },
+    guest: null, // { id, until, gifted } while a friend visits
+    guestAt: now + 3 * 60 * 1000, // first friend a few minutes after the very first launch
     colors: {}, // itemId -> chosen colour id ('base' when missing)
     ownedColors: [], // 'itemId:colorId' bought extras
     daily: { day: '', counts: {}, tasks: [], claimed: [] },
@@ -46,7 +49,8 @@ export function normalize(raw, now = Date.now()) {
   if (!raw || typeof raw !== 'object' || raw.v !== SAVE_VERSION) return base;
   const num = (value, fallback) => (Number.isFinite(value) && value >= 0 ? Math.floor(value) : fallback);
   const state = { ...base };
-  for (const key of ['savedAt', 'coins', 'crystals', 'fish', 'fishAt', 'bond']) state[key] = num(raw[key], base[key]);
+  for (const key of ['savedAt', 'coins', 'crystals', 'fish', 'fishAt', 'bond', 'bondPaid']) state[key] = num(raw[key], base[key]);
+  state.bondPaid = Math.max(1, state.bondPaid);
   if (raw.pets && typeof raw.pets.day === 'string') {
     state.pets = { day: raw.pets.day, count: num(raw.pets.count, 0), fishGiven: num(raw.pets.fishGiven, 0) };
   }
@@ -73,6 +77,8 @@ export function normalize(raw, now = Date.now()) {
   for (const [id, color] of Object.entries(raw.colors || {})) if (hasColor(state, id, color)) state.colors[id] = color;
   state.request = REQUESTS.some((r) => r.id === raw.request?.id) ? { id: raw.request.id, base: num(raw.request.base, 0) } : null;
   state.requestAt = num(raw.requestAt, base.requestAt);
+  state.guestAt = num(raw.guestAt, base.guestAt);
+  state.guest = GUESTS.some((g) => g.id === raw.guest?.id) ? { id: raw.guest.id, until: num(raw.guest.until, 0), gifted: raw.guest.gifted === true } : null;
   state.giftDay = typeof raw.giftDay === 'string' ? raw.giftDay : '';
   state.playLog = Array.isArray(raw.playLog) ? raw.playLog.filter((t) => Number.isFinite(t)).slice(-10) : [];
   state.settings = {

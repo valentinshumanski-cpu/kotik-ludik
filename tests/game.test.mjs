@@ -265,3 +265,40 @@ test('buying a sofa replaces the armchair, the armchair can come back', () => {
   assert.ok(placeItem(s, 'armchair'));
   assert.equal(s.placed.seat, 'armchair');
 });
+
+// ---------- bond levels ----------
+import { bondNeed, bondLevel, claimBondLevels } from '../src/game/progress.js';
+
+test('bond levels grow further apart and pay once', () => {
+  assert.deepEqual([2, 3, 4, 5].map(bondNeed), [15, 45, 90, 150]);
+  assert.deepEqual([0, 14, 15, 44, 45, 150].map(bondLevel), [1, 1, 2, 2, 3, 5]);
+  const s = createState(T0);
+  s.bond = 150; // level 5 at once, e.g. an old save
+  assert.deepEqual(claimBondLevels(s), [2, 3, 4, 5]);
+  assert.equal(s.crystals, 2 + 3 + 4 + 5);
+  assert.equal(s.fish, FISH_CAP + 10, 'every 5th level adds fish');
+  assert.deepEqual(claimBondLevels(s), [], 'no double reward');
+  assert.equal(normalize(JSON.parse(JSON.stringify(s)), T0).bondPaid, 5);
+});
+
+// ---------- guests ----------
+import { guestArrives, currentGuest, greetGuest, guestLeaves, GUEST_STAY_MS } from '../src/game/progress.js';
+
+test('a friend visits, is never Alex himself, gifts once and leaves', () => {
+  const s = createState(T0);
+  assert.equal(guestArrives(s, T0), null, 'not right at the first launch');
+  const t = s.guestAt;
+  for (let i = 0; i < 10; i++) {
+    s.guest = null;
+    assert.notEqual(guestArrives(s, t, () => i / 10).breed, s.breed);
+  }
+  assert.equal(guestArrives(s, t), null, 'one guest at a time');
+  const before = s.coins + s.fish + s.crystals;
+  assert.ok(greetGuest(s, () => 0));
+  assert.equal(s.coins + s.fish + s.crystals, before + 3);
+  assert.equal(greetGuest(s), null, 'gift only once per visit');
+  assert.equal(guestLeaves(s, t + GUEST_STAY_MS - 1), false);
+  assert.ok(guestLeaves(s, t + GUEST_STAY_MS));
+  assert.ok(s.guestAt >= t + GUEST_STAY_MS + 20 * 60e3, 'next friend 20–40 min later');
+  assert.equal(currentGuest(s), null);
+});

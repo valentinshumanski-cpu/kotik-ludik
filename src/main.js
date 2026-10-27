@@ -4,6 +4,8 @@ import { ITEMS, PLACES, BREEDS, ACHIEVEMENTS, COLOR_PRICE, itemById } from './da
 import {
   todaysTasks, taskProgress, claimTask, achievementProgress, claimAchievement, claimableCount, claimDailyGift,
   maybeRequest, currentRequest, requestProgress, completeRequest, finishGame, msToNextGameReward,
+  bondLevel, bondNeed, levelReward, claimBondLevels,
+  guestArrives, currentGuest, greetGuest, guestLeaves,
   GIFT_FISH, GAME_REWARDS_PER_HOUR, MAX_GAME_COINS, REQUEST_REWARD,
 } from './game/progress.js';
 import { startGame } from './minigames.js';
@@ -214,6 +216,17 @@ function afterActivity() {
     say(`Спасибо! 💛 +${REQUEST_REWARD.fish} 🐟`, 2600);
     setTimeout(() => sfx.meow(true), 300);
   } else if (bubbleTimer === null) showRequest(); // refresh the progress unless a message is showing
+  const levels = claimBondLevels(state);
+  if (levels.length) {
+    const level = levels.at(-1);
+    const crystals = levels.reduce((sum, l) => sum + levelReward(l).crystals, 0);
+    shown = null;
+    confetti();
+    hearts(6);
+    setTimeout(() => sfx.meow(true), 200);
+    haptic('success');
+    say(`Мы стали ближе! Дружба: уровень ${level} 💛 +${crystals} 💎${level % 5 === 0 ? ' +10 🐟' : ''}`, 3500);
+  }
   save();
   renderHud();
 }
@@ -509,6 +522,44 @@ async function cozy(kind) {
   afterActivity();
 }
 
+// ---------- guests: a friend drops by the living room now and then ----------
+const GUEST_SPOT = [80, 87]; // paws on the rug's right side; the friend is 40% wide
+function showGuest(arriving) {
+  const g = currentGuest(state);
+  if (!g) return;
+  const el = $('guest');
+  $('guestImg').src = `assets/cats/${g.breed}-calm.webp`;
+  Object.assign(el.style, { left: `${GUEST_SPOT[0] - 20}%`, top: `${GUEST_SPOT[1] - 18.7}%` });
+  el.hidden = false;
+  el.classList.remove('leaving');
+  if (!arriving) return;
+  sfx.meow();
+  haptic('light');
+  say(screen === 'living' ? `Ура, ${g.name} в гостях!` : `${g.name} в гостях! Загляни в гостиную ›`, 3500);
+}
+function hideGuest(name) {
+  $('guest').classList.add('leaving');
+  setTimeout(() => { $('guest').hidden = true; }, 600);
+  if (screen === 'living') say(`Пока, ${name}!`);
+}
+function onGuest() {
+  const g = currentGuest(state);
+  if (!g) return;
+  audioOn();
+  const [x, y] = GUEST_SPOT;
+  burst('heart', '♥', 3, x, y - 14, 10);
+  const gift = greetGuest(state);
+  if (gift) {
+    sfx.buy();
+    haptic('success');
+    shown = null;
+    burst('reward', rewardText(gift), 1, x - 4, y - 18, 0);
+    say(`${g.name} ${g.brought} подарок! 🎁`, 3000);
+    save();
+    renderHud();
+  } else sfx.purr();
+}
+
 // ---------- goal card & panels ----------
 function buy(id) {
   if (!buyItem(state, id)) { sfx.denied(); haptic('error'); return false; }
@@ -567,7 +618,8 @@ const panels = {
       return `<div class="card"><img src="assets/cats/${b.id}-calm.webp" alt=""><b>${b.name}</b>${button}</div>`;
     }).join('')}</div>
     <h3>Алекс и ты</h3>
-    <div class="row"><span>Привязанность</span><b>♥ ${state.bond}</b></div>
+    <div class="row"><span>Дружба: уровень ${bondLevel(state.bond)}</span><b>♥ ${state.bond} / ${bondNeed(bondLevel(state.bond) + 1)}</b></div>
+    <div class="task"><span><span class="bar"><i style="width:${(100 * (state.bond - bondNeed(bondLevel(state.bond)))) / (bondNeed(bondLevel(state.bond) + 1) - bondNeed(bondLevel(state.bond)))}%"></i></span><small>Следующий уровень: +${levelReward(bondLevel(state.bond) + 1).crystals} 💎. Гладь, корми, смотри мультики и читай с Алексом.</small></span></div>
     <div class="row"><span>Прокруток</span><b>${state.stats.spins}</b></div>
     <div class="row"><span>Вещей в комнате</span><b>${state.owned.length} / ${ITEMS.length}</b></div>`,
   },
@@ -737,6 +789,7 @@ const onPlay = () => {
 };
 $('playButton').addEventListener('click', onPlay);
 $('lrPlayButton').addEventListener('click', onPlay);
+$('guest').addEventListener('click', onGuest);
 $('tv').addEventListener('click', () => cozy('tv'));
 $('tvButton').addEventListener('click', () => cozy('tv'));
 $('readButton').addEventListener('click', () => cozy('book'));
@@ -764,6 +817,9 @@ setInterval(() => {
   regenFish(state);
   if (state.fish !== before) save();
   if (!lrBusy && !stopGame && Date.now() > lrNextMove) moveLrCat(lrSpot === 'window' ? 'seat' : 'window');
+  if (!stopGame && guestArrives(state)) { save(); showGuest(true); }
+  const leaving = currentGuest(state)?.name;
+  if (guestLeaves(state)) { save(); hideGuest(leaving); }
   if (!stopGame && !spinning && maybeRequest(state)) {
     save();
     showRequest();
@@ -791,3 +847,5 @@ if (claimDailyGift(state)) {
     renderHud();
   }, 700);
 } else showRequest();
+if (!guestLeaves(state)) showGuest(false);
+setTimeout(() => $('lrCat').classList.add('glide'), 100);

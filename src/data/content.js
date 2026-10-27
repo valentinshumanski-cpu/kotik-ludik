@@ -95,3 +95,11 @@ export const REQUESTS = [
   { id: 'tv', text: 'Посмотрим мультики?', event: 'tv', target: 1, needs: 'tv' },
   { id: 'read', text: 'Почитаешь мне?', event: 'reads', target: 1 },
 ];
+
+// Alex's friends who drop by. Until they get their own art they wear the other breeds' poses;
+// a friend never shares Alex's current breed.
+export const GUESTS = [
+  { id: 'zefirka', name: 'Зефирка', breed: 'persian', brought: 'принесла' },
+  { id: 'lysik', name: 'Лысик', breed: 'sphynx', brought: 'принёс' },
+  { id: 'ryzhik', name: 'Рыжик', breed: 'ginger', brought: 'принёс' },
+];
