@@ -91,13 +91,27 @@ function renderRoom(justPlaced) {
   }
   const seat = itemById(state.placed.seat);
   $('living').dataset.seat = seat.id;
-  if (!lrBusy) placeLrCat(seat.seat); // during cartoons or reading Alex is on the rug
+  if (!lrBusy) placeLrCat(lrHome()); // during cartoons or reading Alex is on the rug
 }
 
 // Living room Alex is 46% wide with paws at 83% of his canvas: [x, y] = where the paws go, % of the stage.
 function placeLrCat([x, y]) {
   Object.assign($('lrCat').style, { left: `${x - 23}%`, top: `${y - 21.6}%` });
   HEAD.living = [x + 1, y - 12];
+  placeBubble();
+}
+
+// Now and then Alex hops onto the windowsill and looks outside (the back-view pose), then returns.
+const WINDOW_SPOT = [72, 28.5]; // windowsill top, right pane
+let lrSpot = 'seat';
+let lrNextMove = Date.now() + 30000;
+const lrHome = () => (lrSpot === 'window' ? WINDOW_SPOT : itemById(state.placed.seat).seat);
+function moveLrCat(spot) {
+  lrSpot = spot;
+  lrPose = spot === 'window' ? 'tv' : null;
+  lrNextMove = Date.now() + (spot === 'window' ? 15000 + Math.random() * 10000 : 40000 + Math.random() * 40000);
+  placeLrCat(lrHome());
+  setPose(pose);
 }
 
 const renderAll = (justPlaced) => { renderHud(); renderGoal(); renderRoom(justPlaced); setPose(pose); };
@@ -142,6 +156,7 @@ function onScreen() {
   screen = now;
   document.body.dataset.screen = now;
   $(now === 'living' ? 'living' : 'stage').append($('bubble'), $('fx')); // Alex talks where the player looks
+  placeBubble();
 }
 function go(name) {
   const rooms = $('rooms');
@@ -161,7 +176,14 @@ function blinkLoop() {
   }, 2800 + Math.random() * 3500);
 }
 
+// The bubble's bottom sits just above Alex's head (CSS anchors it by its bottom edge).
+function placeBubble() {
+  const [x, y] = HEAD[screen];
+  Object.assign($('bubble').style, { left: `${Math.min(78, Math.max(22, x))}%`, top: `${Math.max(15, y - 9)}%` }); // never under the top HUD
+}
+
 function say(text, ms = 2200) {
+  placeBubble();
   const bubble = $('bubble');
   bubble.textContent = text;
   bubble.hidden = false;
@@ -176,6 +198,7 @@ function say(text, ms = 2200) {
 function showRequest() {
   bubbleTimer = null;
   const r = currentRequest(state);
+  placeBubble();
   const bubble = $('bubble');
   bubble.hidden = !r || Boolean(stopGame);
   if (r) bubble.textContent = `💭 ${r.text} ${requestProgress(state)}/${r.target}`;
@@ -233,6 +256,7 @@ function confetti(count = 26) {
 }
 
 function onPet() {
+  if (screen === 'living' && lrSpot === 'window') moveLrCat('seat'); // a pet calls him down from the window
   audioOn();
   wake();
   const gotFish = pet(state);
@@ -444,6 +468,7 @@ async function cozy(kind) {
   }
   if (kind === 'book') readBook(state);
   lrBusy = true;
+  if (lrSpot === 'window') moveLrCat('seat');
   save();
   $('living').classList.add('lr-busy');
   // Sofa and TV both face the player, so a back-view "watching" Alex only makes sense in front of the TV;
@@ -456,6 +481,7 @@ async function cozy(kind) {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const screenEl = $('tv').querySelector('.tv-screen');
   if (kind === 'tv') {
+    if (screenEl) screenEl.dataset.show = ['sea', 'chase', 'night', 'yarn'][Math.floor(Math.random() * 4)];
     screenEl?.classList.add('on');
     sfx.catch();
     lrPose = 'tv';
@@ -477,7 +503,7 @@ async function cozy(kind) {
   lrPose = null;
   lrBusy = false;
   $('living').classList.remove('lr-busy');
-  placeLrCat(itemById(state.placed.seat).seat); // back to the seat
+  placeLrCat(lrHome()); // back to the seat
   react('joy', 'happy', 1200);
   say(kind === 'tv' ? 'Классные мультики!' : 'Ещё почитаем?');
   afterActivity();
@@ -575,6 +601,7 @@ const panels = {
       return `<div class="grid">
         <button class="game-pick" data-game="mouse"><img src="assets/toy-mouse.webp" alt=""><b>Поймай мышку</b><small>Тапай по мышкам</small></button>
         <button class="game-pick" data-game="laser"><span class="laser-preview"></span><b>Лазерная точка</b><small>Веди точку — Алекс ловит</small></button>
+        <button class="game-pick" data-game="ball"><img src="assets/toy-ball-bell.webp" alt=""><b>Мячик</b><small>Тапни мяч — Алекс догонит</small></button>
       </div>
       <p class="note">${wait ? `Монетки на этот час закончились, следующие через ${Math.ceil(wait / 60000)} мин. Играть можно и так!` : `Монетки за игру: по 2 за поимку, до ${MAX_GAME_COINS}. Осталось игр с наградой в этот час: ${left} из ${GAME_REWARDS_PER_HOUR}.`}</p>`;
     },
@@ -637,6 +664,7 @@ function playGame(kind) {
       sfx.catch();
       haptic('medium');
       if (kind === 'mouse') react('joy', 'play', 500);
+      if (kind === 'ball') { burst('heart', '♥', 4, x, y - 8, 10); sfx.meow(true); }
     },
     onEnd(catches, quit) {
       stopGame = null;
@@ -700,7 +728,6 @@ $('spinButton').addEventListener('click', spin);
 $('lever').addEventListener('click', spin);
 $('cat').addEventListener('click', onPet);
 $('lrCat').addEventListener('click', onPet);
-$('petButton').addEventListener('click', onPet);
 const onPlay = () => {
   audioOn();
   wake();
@@ -714,6 +741,18 @@ $('tv').addEventListener('click', () => cozy('tv'));
 $('tvButton').addEventListener('click', () => cozy('tv'));
 $('readButton').addEventListener('click', () => cozy('book'));
 $('rooms').addEventListener('scroll', onScreen, { passive: true });
+let swipeFrom = null;
+let swiped = false;
+$('rooms').addEventListener('pointerdown', (e) => { swipeFrom = stopGame ? null : [e.clientX, e.clientY]; });
+$('rooms').addEventListener('pointerup', (e) => {
+  if (!swipeFrom) return;
+  const dx = e.clientX - swipeFrom[0];
+  const dy = e.clientY - swipeFrom[1];
+  swipeFrom = null;
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) { swiped = true; go(dx < 0 ? 'living' : 'main'); }
+});
+// a drag that switched rooms must not also count as a tap on whatever it started on
+$('rooms').addEventListener('click', (e) => { if (swiped) { swiped = false; e.stopPropagation(); e.preventDefault(); } }, true);
 document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => { sfx.click(); go(b.dataset.go); }));
 $('goalCard').addEventListener('click', onGoal);
 $('bowl').addEventListener('click', onFeed);
@@ -724,6 +763,7 @@ setInterval(() => {
   const before = state.fish;
   regenFish(state);
   if (state.fish !== before) save();
+  if (!lrBusy && !stopGame && Date.now() > lrNextMove) moveLrCat(lrSpot === 'window' ? 'seat' : 'window');
   if (!stopGame && !spinning && maybeRequest(state)) {
     save();
     showRequest();
