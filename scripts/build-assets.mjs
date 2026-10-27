@@ -9,6 +9,8 @@ const OBJ = 'Refs/Refs_Objects/objects';
 const CATS = 'Refs/Refs';
 const NEW = 'Refs/Новые рефы/Котик-лудик-новые-материалы-2026-10-25/Refs/New';
 const NEW_CATS = 'Refs/Новые рефы/Котики_Еда_Бег_2026-10-25/Refs/New';
+const LR = 'Refs/Новые рефы/Котик-лудик-гостиная-4.2-2026-10-27/Refs/New-livingroom';
+const LR_CATS = 'Refs/Новые рефы/Котики_Гостиная_16-18_2026-10-27/Refs/New-livingroom';
 
 // [output name, source, max side in px]
 const objects = [
@@ -52,15 +54,22 @@ const objects = [
   ...['rug-blue', 'rug-mint', 'rug-square'].map((n) => [n, `${NEW}/${n}.png`, 768]),
   ['toy-ball-bell', `${NEW}/toy-ball-bell.png`, 384],
   ['wall', `${NEW}/wall-9x16.png`, 900],
+  // living room order 2026-10-27 (stage 4.2)
+  ...['lr-wall-cream', 'lr-wall-green', 'lr-wall-blue'].map((n) => [n, `${LR}/${n}.png`, 900]),
+  ...['lr-floor-oak', 'lr-floor-dark'].map((n) => [n, `${LR}/${n}.png`, 1280]),
+  ...['sofa-cozy', 'sofa-cozy-blue', 'sofa-cozy-mint', 'sofa-corner', 'lr-rug-oval'].map((n) => [n, `${LR}/${n}.png`, 768]),
+  ...['tv-retro', 'tv-flat', 'lr-window'].map((n) => [n, `${LR}/${n}.png`, 640]),
+  ['floor-lamp', `${LR}/floor-lamp.png`, 384],
+  ['book-open', `${LR}/book-open.png`, 192],
 ];
 
 const breeds = { ginger: '1. Рыжий/Рыжий', persian: '2. Персидский/Персидский', sphynx: '3. Сфинкс/Сфинкс_канадский' };
 const poses = {
   calm: '01_Спокойный', joy: '02_Радостный', happy: '03_Счастливый', super: '04_Очень_счастливый', hype: '05_Восторг_hype',
   blink: '06_Моргание', wait: '07_Ожидание', pet: '08_Поглаживание', play: '09_Игра', sleep: '10_Сон',
-  eat: '14_Еда', run: '15_Бег',
+  eat: '14_Еда', run: '15_Бег', tv: '16_ТВ', book: '17_Книга', lie: '18_Лежит',
 };
-const NEW_POSES = new Set(['eat', 'run']); // these come from the 2026-10-25 order folder
+const POSE_DIR = { eat: NEW_CATS, run: NEW_CATS, tv: LR_CATS, book: LR_CATS, lie: LR_CATS }; // poses ordered later live in their order folders
 
 fs.mkdirSync(`${OUT}/cats`, { recursive: true });
 let total = 0;
@@ -77,7 +86,7 @@ for (const [name, src, max] of objects) {
 // Cats keep the shared 768 canvas (paw line at y=640) so every pose stands on the same spot.
 for (const [breed, prefix] of Object.entries(breeds)) {
   for (const [pose, suffix] of Object.entries(poses)) {
-    const src = NEW_POSES.has(pose) ? `${NEW_CATS}/${path.basename(prefix)}_${suffix}.png` : `${CATS}/${prefix}_${suffix}.png`;
+    const src = POSE_DIR[pose] ? `${POSE_DIR[pose]}/${path.basename(prefix)}_${suffix}.png` : `${CATS}/${prefix}_${suffix}.png`;
     await write(sharp(src).resize(384, 384), `${OUT}/cats/${breed}-${pose}.webp`);
   }
 }

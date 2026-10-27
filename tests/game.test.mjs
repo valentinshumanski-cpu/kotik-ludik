@@ -96,7 +96,8 @@ test('normalize survives junk and keeps valid progress', () => {
   assert.equal(s.coins, 50);
   assert.equal(s.crystals, 0);
   assert.ok(s.owned.includes('yarn') && !s.owned.includes('hacked'));
-  assert.deepEqual(s.placed, { toy: 'yarn' });
+  assert.equal(s.placed.toy, 'yarn');
+  assert.equal(s.placed.bed, undefined, 'yarn cannot sit in the bed place');
   assert.equal(s.breed, 'ginger');
 });
 
@@ -231,4 +232,36 @@ test('feed request and task only come with a bowl', () => {
     assert.notEqual(maybeRequest(s, T0, () => i / 20).id, 'feed');
   }
   assert.ok(!pickTasks('2026-10-25', s).includes('feed2'));
+});
+
+// ---------- living room ----------
+import { watchTv, readBook, placeItem } from '../src/game/state.js';
+
+test('living room starts furnished, also for saves from before it existed', () => {
+  const fresh = createState(T0);
+  assert.deepEqual([fresh.placed.seat, fresh.placed['lr-wall'], fresh.placed['lr-floor'], fresh.placed['lr-rug']],
+    ['armchair', 'lr-wall-cream', 'lr-floor-oak', 'lr-rug-tassel']);
+  const old = normalize({ v: 1, owned: ['cat-bed'], placed: { bed: 'cat-bed' } }, T0);
+  assert.equal(old.placed.bed, 'cat-bed', 'old placements kept');
+  assert.equal(old.placed.seat, 'armchair', 'new places filled with starters');
+  assert.ok(old.owned.includes('lr-wall-cream'));
+});
+
+test('TV needs a TV, reading always works, both count for tasks', () => {
+  const s = createState(T0);
+  assert.equal(watchTv(s, T0), false);
+  s.coins = 500;
+  buyItem(s, 'tv-retro', T0);
+  assert.ok(watchTv(s, T0));
+  assert.ok(readBook(s, T0));
+  assert.deepEqual([s.stats.tv, s.stats.reads, s.bond], [1, 1, 4]);
+});
+
+test('buying a sofa replaces the armchair, the armchair can come back', () => {
+  const s = createState(T0);
+  s.coins = 200;
+  assert.ok(buyItem(s, 'sofa-cozy', T0));
+  assert.equal(s.placed.seat, 'sofa-cozy');
+  assert.ok(placeItem(s, 'armchair'));
+  assert.equal(s.placed.seat, 'armchair');
 });

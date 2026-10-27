@@ -10,6 +10,7 @@ export const FISH_REGEN_MS = 3 * 60 * 1000;
 export const PETS_PER_FISH = 10;
 export const PET_FISH_PER_DAY = 10;
 export const FEED_BOND = 5;
+export const COZY_BOND = 2; // watching TV or reading together
 
 export function createState(now = Date.now()) {
   return {
@@ -22,11 +23,11 @@ export function createState(now = Date.now()) {
     bond: 0,
     pets: { day: dayKey(now), count: 0, fishGiven: 0 },
     owned: ITEMS.filter((item) => item.price === 0).map((item) => item.id),
-    placed: { plant: 'plant-large', rug: 'rug' },
+    placed: { plant: 'plant-large', rug: 'rug', seat: 'armchair', 'lr-rug': 'lr-rug-tassel', 'lr-wall': 'lr-wall-cream', 'lr-floor': 'lr-floor-oak' },
     target: 'cat-bed',
     breed: 'ginger',
     breeds: ['ginger'],
-    stats: { spins: 0, pets: 0, games: 0, catches: 0, wins: 0, buys: 0, feeds: 0 },
+    stats: { spins: 0, pets: 0, games: 0, catches: 0, wins: 0, buys: 0, feeds: 0, tv: 0, reads: 0 },
     colors: {}, // itemId -> chosen colour id ('base' when missing)
     ownedColors: [], // 'itemId:colorId' bought extras
     daily: { day: '', counts: {}, tasks: [], claimed: [] },
@@ -51,7 +52,7 @@ export function normalize(raw, now = Date.now()) {
   }
   const known = new Set(ITEMS.map((item) => item.id));
   state.owned = [...new Set([...base.owned, ...(Array.isArray(raw.owned) ? raw.owned.filter((id) => known.has(id)) : [])])];
-  state.placed = {};
+  state.placed = { ...base.placed }; // places added in later versions get their free starter item
   for (const [place, id] of Object.entries(raw.placed || {})) {
     if (state.owned.includes(id) && itemById(id).place === place) state.placed[place] = id;
   }
@@ -192,5 +193,19 @@ export function feed(state, now = Date.now()) {
   state.fish -= 1;
   state.bond += FEED_BOND;
   track(state, 'feeds', 1, now);
+  return true;
+}
+
+// ---------- living room: watching TV and reading together ----------
+export function watchTv(state, now = Date.now()) {
+  if (!state.placed.tv) return false;
+  state.bond += COZY_BOND;
+  track(state, 'tv', 1, now);
+  return true;
+}
+
+export function readBook(state, now = Date.now()) {
+  state.bond += COZY_BOND;
+  track(state, 'reads', 1, now);
   return true;
 }

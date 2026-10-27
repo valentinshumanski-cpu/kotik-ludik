@@ -1,6 +1,6 @@
 // Game content as data. Prices follow GDD v1 starting numbers.
 
-// Room places for the MVP. Order = shop order.
+// Room places. Order = shop order; `room` = which screen the place is on.
 export const PLACES = [
   { id: 'bed', name: 'Лежанка' },
   { id: 'scratcher', name: 'Когтеточка' },
@@ -8,6 +8,12 @@ export const PLACES = [
   { id: 'toy', name: 'Игрушка' },
   { id: 'plant', name: 'Растение' },
   { id: 'rug', name: 'Коврик' },
+  { id: 'seat', name: 'Диван', room: 'living' },
+  { id: 'tv', name: 'Телевизор', room: 'living' },
+  { id: 'lamp', name: 'Торшер', room: 'living' },
+  { id: 'lr-rug', name: 'Ковёр', room: 'living' },
+  { id: 'lr-wall', name: 'Обои', room: 'living' },
+  { id: 'lr-floor', name: 'Пол', room: 'living' },
 ];
 
 // Extra colours of an item: base look is free with the item, each other colour costs COLOR_PRICE.
@@ -32,6 +38,20 @@ export const ITEMS = [
   { id: 'plant-flowers', place: 'plant', name: 'Розовые цветы', price: 60, img: 'plant-flowers' },
   { id: 'rug', place: 'rug', name: 'Коврик с лапкой', price: 0, img: 'rug', colors: COLORS('rug', { name: 'Розовый', swatch: '#e58a9b' }) },
   { id: 'rug-square', place: 'rug', name: 'Коврик с кисточками', price: 50, img: 'rug-square' },
+  // living room. `seat` = where Alex's paws go on it, % of the stage
+  { id: 'armchair', place: 'seat', name: 'Кресло с пледом', price: 0, img: 'armchair', seat: [31, 58.6] },
+  { id: 'sofa-cozy', place: 'seat', name: 'Уютный диван', price: 120, img: 'sofa-cozy', seat: [20, 66], colors: COLORS('sofa-cozy', { name: 'Розовый', swatch: '#d9606e' }) },
+  { id: 'sofa-corner', place: 'seat', name: 'Угловой диван', price: 160, img: 'sofa-corner', seat: [18, 64] },
+  { id: 'tv-retro', place: 'tv', name: 'Ретро-телевизор', price: 150, img: 'tv-retro' },
+  { id: 'tv-flat', place: 'tv', name: 'Плоский телевизор', price: 220, img: 'tv-flat' },
+  { id: 'floor-lamp', place: 'lamp', name: 'Торшер', price: 70, img: 'floor-lamp' },
+  { id: 'lr-rug-tassel', place: 'lr-rug', name: 'Ковёр с кисточками', price: 0, img: 'rug-square' },
+  { id: 'lr-rug-oval', place: 'lr-rug', name: 'Овальный ковёр', price: 50, img: 'lr-rug-oval' },
+  { id: 'lr-wall-cream', place: 'lr-wall', name: 'Кремовые обои', price: 0, img: 'lr-wall-cream' },
+  { id: 'lr-wall-green', place: 'lr-wall', name: 'Зелёные в полоску', price: 60, img: 'lr-wall-green' },
+  { id: 'lr-wall-blue', place: 'lr-wall', name: 'Голубые с облачками', price: 60, img: 'lr-wall-blue' },
+  { id: 'lr-floor-oak', place: 'lr-floor', name: 'Светлый дуб', price: 0, img: 'lr-floor-oak' },
+  { id: 'lr-floor-dark', place: 'lr-floor', name: 'Тёмное дерево', price: 50, img: 'lr-floor-dark' },
 ];
 
 export const BREEDS = [
@@ -51,6 +71,8 @@ export const TASKS = [
   { id: 'win5', title: 'Выиграй на автомате 5 раз', event: 'wins', target: 5, reward: { coins: 30 } },
   { id: 'buy1', title: 'Купи вещь в магазине', event: 'buys', target: 1, reward: { crystals: 1 } },
   { id: 'feed2', title: 'Покорми Алекса 2 раза', event: 'feeds', target: 2, reward: { fish: 3 }, needs: 'bowl' },
+  { id: 'tv2', title: 'Посмотри мультики с Алексом 2 раза', event: 'tv', target: 2, reward: { fish: 3 }, needs: 'tv' },
+  { id: 'read2', title: 'Почитай Алексу 2 раза', event: 'reads', target: 2, reward: { fish: 3 } },
 ];
 
 // One-time milestones.
@@ -70,4 +92,6 @@ export const REQUESTS = [
   { id: 'spin', text: 'Покрути автомат!', event: 'spins', target: 3 },
   { id: 'catch', text: 'Хочу поймать 5 мышек!', event: 'catches', target: 5 },
   { id: 'feed', text: 'Я проголодался! Нажми на миску', event: 'feeds', target: 1, needs: 'bowl' },
+  { id: 'tv', text: 'Посмотрим мультики?', event: 'tv', target: 1, needs: 'tv' },
+  { id: 'read', text: 'Почитаешь мне?', event: 'reads', target: 1 },
 ];

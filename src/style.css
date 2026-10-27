@@ -335,25 +335,44 @@ img { -webkit-user-drag: none; }
 /* ---------- Screens: main room and living room, swiped sideways ---------- */
 .rooms { position: absolute; inset: 0; display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
 .rooms::-webkit-scrollbar { display: none; }
-.screen { position: relative; flex: 0 0 100%; height: 100%; scroll-snap-align: start; scroll-snap-stop: always; }
+.screen { position: relative; flex: 0 0 100%; height: 100%; overflow: hidden; scroll-snap-align: start; scroll-snap-stop: always; }
 .in-game .rooms { overflow: hidden; }
 .arrow { top: 38%; z-index: 4; padding: 1.4cqw 2.6cqw; border: 0; border-radius: 99px; background: #3b1a12cc; color: #fff3df; font-size: 3.2cqw; font-weight: 800; }
 .arrow-right { right: 1%; }
 .arrow-left { left: 1%; }
 .in-game .arrow { visibility: hidden; }
 
-/* Living room, built from the first environment batch until its own art arrives */
-.lr-view { left: 53%; top: 11.6%; width: 32% !important; height: 22.4% !important; object-fit: cover; }
-.lr-window { left: 47%; top: 8%; width: 44%; }
-.lr-frame { left: 10%; top: 14%; width: 20%; }
-.lr-lamp { left: 30%; top: -1%; width: 7%; }
-.lr-radiator { left: 56%; top: 42%; width: 28%; }
-.lr-rug { left: 5%; top: 72%; width: 90%; }
-.lr-armchair { left: 4%; top: 45%; width: 54%; }
+/* Living room (stage 4.2). Places hold the chosen items; positions in % of the stage. */
+.lr-wall-place { inset: 0 0 37% 0; }
+.lr-wall-place img { width: 100%; height: 100%; object-fit: cover; object-position: center bottom; }
+.lr-floor-place { left: -66%; top: 61%; width: 232%; }
+.lr-window { left: 40%; top: 8%; width: 52%; }
+.lr-view { left: 48.8%; top: 10.7%; width: 34.3% !important; height: 16.3% !important; object-fit: cover; }
+.lr-clouds { left: 48.8%; top: 10.7%; width: 34.3%; height: 8%; }
+.lr-frame { left: 8%; top: 16%; width: 20%; }
+.lr-lamp-place { left: 0%; top: 47.5%; width: 15%; }
+.lr-lamp-place img { animation: warm 4s ease-in-out infinite; }
+.lr-rug-place { left: 5%; top: 72%; width: 90%; }
+.lr-rug-place[data-item^="lr-rug-oval"] { left: 3%; top: 70%; width: 94%; }
+.lr-seat-place { left: 4%; top: 45%; width: 54%; } /* armchair */
+.lr-seat-place[data-item^="sofa-cozy"] { left: -1%; top: 57%; width: 58%; }
+.lr-seat-place[data-item^="sofa-corner"] { left: -2%; top: 56%; width: 62%; }
+.living:not([data-seat="armchair"]) .armchair-only { display: none; }
 .lr-pillow { left: 38%; top: 55%; width: 14%; }
 .lr-blanket { left: 0%; top: 47%; width: 24%; transform: rotate(-4deg); }
-.lr-table { left: 62%; top: 62.8%; width: 30%; }
-.lr-mug { left: 72%; top: 60.3%; width: 8%; }
-.lr-cat { left: 8%; top: 37.4%; width: 46%; }
+.lr-tv-place { left: 58%; top: 50%; width: 38%; padding: 0; border: 0; background: none; cursor: pointer; }
+.lr-tv-place[data-item^="tv-flat"] { left: 55%; top: 52.5%; width: 43%; }
+.lr-tv-place img { position: relative; }
+.tv-screen { position: absolute; left: 11.4%; top: 30.5%; width: 63.3%; height: 45%; background: #26242e; overflow: hidden; }
+.lr-tv-place[data-item^="tv-flat"] .tv-screen { left: 13.9%; top: 3.5%; width: 72.2%; height: 48.6%; }
+.tv-screen.on { background: linear-gradient(120deg, #7fd3f7, #a77bf3, #ffd56b, #7fdc8a, #7fd3f7); background-size: 400% 400%; animation: tv-glow 4s linear infinite; }
+.tv-screen.on::after { content: "🐟"; position: absolute; top: 30%; font-size: 4cqw; animation: swim 2.6s linear infinite; }
+@keyframes tv-glow { to { background-position: 400% 0; } }
+@keyframes swim { from { left: -20%; } to { left: 100%; } }
+.lr-cat { width: 46%; } /* left/top come from the seat item */
+.lr-book { width: 14%; pointer-events: none; }
+.lr-tv-btn { right: 2%; top: 38%; background: linear-gradient(#5fb7e8, #3a8fd0); }
+.lr-read { right: 2%; top: 44.5%; background: linear-gradient(#f7a35c, #e07b2f); }
 .lr-play { top: 76%; left: 50%; transform: translateX(-50%); background: linear-gradient(#a77bf3, #7b4fd6); }
 .living .bubble { top: 30%; left: 31%; }
+.sheet-body h2.shop-room { margin: calc(var(--u) * 5) 0 0; padding-bottom: calc(var(--u) * 1.5); border-bottom: 2px solid #e6cfae; font-size: calc(var(--u) * 5.2); }

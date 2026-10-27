@@ -1,5 +1,5 @@
 import { SYMBOLS, spinReels, evaluate } from './game/slot.js';
-import { applySpin, regenFish, msToNextFish, pet, buyItem, placeItem, buyBreed, chooseColor, itemImg, feed, FISH_CAP } from './game/state.js';
+import { applySpin, regenFish, msToNextFish, pet, buyItem, placeItem, buyBreed, chooseColor, itemImg, feed, watchTv, readBook, FISH_CAP } from './game/state.js';
 import { ITEMS, PLACES, BREEDS, ACHIEVEMENTS, COLOR_PRICE, itemById } from './data/content.js';
 import {
   todaysTasks, taskProgress, claimTask, achievementProgress, claimAchievement, claimableCount, claimDailyGift,
@@ -85,10 +85,17 @@ function renderRoom(justPlaced) {
     const key = `${item.id}:${state.colors[item.id] || 'base'}`;
     if (el.dataset.item === key) continue;
     el.dataset.item = key;
-    el.innerHTML = `<img src="${asset(itemImg(state, item))}" alt="${item.name}"${item.id === justPlaced ? ' class="appear"' : ''}>`;
+    el.innerHTML = `${el.dataset.place === 'tv' ? '<div class="tv-screen"></div>' : ''}<img src="${asset(itemImg(state, item))}" alt="${item.name}"${item.id === justPlaced ? ' class="appear"' : ''}>`;
     // drop the one-shot class so ambient sway (plants) can take over after the landing
-    el.firstChild.addEventListener('animationend', (e) => e.target.classList.remove('appear'), { once: true });
+    el.lastChild.addEventListener('animationend', (e) => e.target.classList.remove('appear'), { once: true });
   }
+  // Alex (46% wide, paws at 83% of his canvas) and the book sit on whatever seat is placed.
+  const seat = itemById(state.placed.seat);
+  const [x, y] = seat.seat;
+  $('living').dataset.seat = seat.id;
+  Object.assign($('lrCat').style, { left: `${x - 23}%`, top: `${y - 21.6}%` });
+  Object.assign($('lrBook').style, { left: `${x - 6}%`, top: `${y - 3.5}%` });
+  HEAD.living = [x + 1, y - 12];
 }
 
 const renderAll = (justPlaced) => { renderHud(); renderGoal(); renderRoom(justPlaced); setPose(pose); };
@@ -107,7 +114,7 @@ function setPose(next, ms = 0) {
   }
   pose = next;
   img.src = src;
-  $('lrCatImg').src = src;
+  $('lrCatImg').src = catSrc(lrPose || next);
   for (const cat of document.querySelectorAll('.cat')) cat.classList.toggle('sleeping', next === 'sleep');
   clearTimeout(poseTimer);
   if (ms) poseTimer = setTimeout(() => setPose('calm'), ms);
@@ -124,6 +131,7 @@ function react(className, nextPose, ms) {
 
 // ---------- screens: main room <-> living room ----------
 let screen = 'main';
+let lrPose = null; // living room only: 'tv' | 'book' | 'lie' while an activity runs
 const HEAD = { main: [50, 27], living: [31, 47] }; // where Alex's head is on each screen, % of the stage
 function onScreen() {
   const rooms = $('rooms');
@@ -421,6 +429,48 @@ function onFeed() {
   })();
 }
 
+// ---------- living room: cartoons and a book ----------
+let lrBusy = false;
+async function cozy(kind) {
+  if (lrBusy || stopGame) return;
+  audioOn();
+  wake();
+  if (kind === 'tv' && !watchTv(state)) {
+    sfx.denied();
+    say('Сначала купи телевизор в магазине 📺');
+    return;
+  }
+  if (kind === 'book') readBook(state);
+  lrBusy = true;
+  save();
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const screenEl = $('tv').querySelector('.tv-screen');
+  if (kind === 'tv') {
+    screenEl?.classList.add('on');
+    sfx.catch();
+    lrPose = 'tv';
+  } else {
+    $('lrBook').hidden = false;
+    lrPose = 'book';
+  }
+  setPose(pose);
+  haptic('light');
+  say(kind === 'tv' ? 'Мультики! 🐟' : 'Читаем сказку… 📖', 2500);
+  await wait(kind === 'tv' ? 8000 : 6000);
+  screenEl?.classList.remove('on');
+  $('lrBook').hidden = true;
+  lrPose = 'lie'; // a short rest afterwards
+  setPose(pose);
+  hearts(3);
+  sfx.purr();
+  await wait(2500);
+  lrPose = null;
+  lrBusy = false;
+  react('joy', 'happy', 1200);
+  say(kind === 'tv' ? 'Классные мультики!' : 'Ещё почитаем?');
+  afterActivity();
+}
+
 // ---------- goal card & panels ----------
 function buy(id) {
   if (!buyItem(state, id)) { sfx.denied(); haptic('error'); return false; }
@@ -447,8 +497,9 @@ function onGoal() {
 const panels = {
   shop: {
     title: 'Магазин',
-    render: () => PLACES.map((place) => {
-      const items = ITEMS.filter((i) => i.place === place.id);
+    render: () => PLACES.map((place, i) => {
+      const items = ITEMS.filter((it) => it.place === place.id);
+      const section = i === 0 ? '<h2 class="shop-room">Комната</h2>' : place.room && !PLACES[i - 1].room ? '<h2 class="shop-room">Гостиная</h2>' : '';
       const cards = items.map((item) => {
         const owned = state.owned.includes(item.id);
         const placed = state.placed[place.id] === item.id;
@@ -464,7 +515,8 @@ const panels = {
         return `<div class="card"><img src="${asset(itemImg(state, item))}" alt=""><b>${item.name}</b>${button}${swatches}</div>`;
       }).join('') || '<div class="card missing">Пока нет картинки предмета</div>';
       const hint = place.id === 'bowl' ? '<p class="note">Нажми на миску в комнате — Алекс поест (1 🐟, +привязанность).</p>' : '';
-      return `<h3>${place.name}</h3>${hint}<div class="grid">${cards}</div>`;
+      const tvHint = place.id === 'tv' ? '<p class="note">Нажми на телевизор или «Мультики» — Алекс посмотрит с тобой.</p>' : '';
+      return `${section}<h3>${place.name}</h3>${hint}${tvHint}<div class="grid">${cards}</div>`;
     }).join('') + `<p class="note">Кружочки под купленной вещью — её цвета. Новый цвет стоит ${COLOR_PRICE} 🪙, потом переключается бесплатно.</p>`,
   },
   collection: {
@@ -646,6 +698,9 @@ const onPlay = () => {
 };
 $('playButton').addEventListener('click', onPlay);
 $('lrPlayButton').addEventListener('click', onPlay);
+$('tv').addEventListener('click', () => cozy('tv'));
+$('tvButton').addEventListener('click', () => cozy('tv'));
+$('readButton').addEventListener('click', () => cozy('book'));
 $('rooms').addEventListener('scroll', onScreen, { passive: true });
 document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => { sfx.click(); go(b.dataset.go); }));
 $('goalCard').addEventListener('click', onGoal);

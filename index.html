@@ -68,20 +68,22 @@
 
     <section class="screen" data-screen="living">
     <div class="stage living" id="living">
-      <div class="wall"></div>
-      <img class="o floor" src="assets/floor.webp" alt="">
+      <div class="o place lr-wall-place" data-place="lr-wall"></div>
+      <div class="o place lr-floor-place" data-place="lr-floor"></div>
       <img class="o lr-view" src="assets/window-view.webp" alt="">
-      <img class="o lr-window" src="assets/window-frame.webp" alt="">
+      <div class="o clouds lr-clouds" aria-hidden="true"></div>
+      <img class="o lr-window" src="assets/lr-window.webp" alt="">
       <img class="o lr-frame" src="assets/photo-frame.webp" alt="">
-      <img class="o lr-lamp lamp" src="assets/lamp.webp" alt="">
-      <img class="o lr-radiator" src="assets/radiator.webp" alt="">
-      <img class="o lr-rug" src="assets/rug-square.webp" alt="">
-      <img class="o lr-armchair" src="assets/armchair.webp" alt="">
-      <img class="o lr-pillow" src="assets/paw-pillow.webp" alt="">
+      <div class="o place lr-lamp-place" data-place="lamp"></div>
+      <div class="o place lr-rug-place" data-place="lr-rug"></div>
+      <button class="o place lr-tv-place" data-place="tv" id="tv" aria-label="Включить мультики"></button>
+      <div class="o place lr-seat-place" data-place="seat"></div>
+      <img class="o lr-pillow armchair-only" src="assets/paw-pillow.webp" alt="">
       <button class="o cat lr-cat" id="lrCat" aria-label="Погладить Алекса"><img id="lrCatImg" class="cat-pose" alt="Котик Алекс"></button>
-      <img class="o lr-blanket" src="assets/blanket.webp" alt="">
-      <img class="o lr-table" src="assets/side-table.webp" alt="">
-      <img class="o lr-mug" src="assets/mug.webp" alt="">
+      <img class="o lr-book" id="lrBook" src="assets/book-open.webp" alt="" hidden>
+      <img class="o lr-blanket armchair-only" src="assets/blanket.webp" alt="">
+      <button class="o action lr-tv-btn" id="tvButton">📺 Мультики</button>
+      <button class="o action lr-read" id="readButton">📖 Почитать</button>
       <button class="o action lr-play" id="lrPlayButton">🎮 Поиграть</button>
       <button class="o arrow arrow-left" data-go="main">‹ Комната</button>
     </div>
