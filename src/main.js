@@ -89,12 +89,14 @@ function renderRoom(justPlaced) {
     // drop the one-shot class so ambient sway (plants) can take over after the landing
     el.lastChild.addEventListener('animationend', (e) => e.target.classList.remove('appear'), { once: true });
   }
-  // Alex (46% wide, paws at 83% of his canvas) and the book sit on whatever seat is placed.
   const seat = itemById(state.placed.seat);
-  const [x, y] = seat.seat;
   $('living').dataset.seat = seat.id;
+  if (!lrBusy) placeLrCat(seat.seat); // during cartoons or reading Alex is on the rug
+}
+
+// Living room Alex is 46% wide with paws at 83% of his canvas: [x, y] = where the paws go, % of the stage.
+function placeLrCat([x, y]) {
   Object.assign($('lrCat').style, { left: `${x - 23}%`, top: `${y - 21.6}%` });
-  Object.assign($('lrBook').style, { left: `${x - 6}%`, top: `${y - 3.5}%` });
   HEAD.living = [x + 1, y - 12];
 }
 
@@ -443,6 +445,14 @@ async function cozy(kind) {
   if (kind === 'book') readBook(state);
   lrBusy = true;
   save();
+  $('living').classList.add('lr-busy');
+  // Sofa and TV both face the player, so a back-view "watching" Alex only makes sense in front of the TV;
+  // lying with a book on the sofa hangs his tail over the armrest. Both happen on the rug.
+  const s = $('living').getBoundingClientRect();
+  const t = $('tv').getBoundingClientRect();
+  const spot = kind === 'tv' ? [((t.left + t.width / 2 - s.left) / s.width) * 100 - 14, 79] : [36, 83];
+  placeLrCat(spot);
+  Object.assign($('lrBook').style, { left: `${spot[0] - 7}%`, top: `${spot[1] - 3.7}%` });
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const screenEl = $('tv').querySelector('.tv-screen');
   if (kind === 'tv') {
@@ -466,6 +476,8 @@ async function cozy(kind) {
   await wait(2500);
   lrPose = null;
   lrBusy = false;
+  $('living').classList.remove('lr-busy');
+  placeLrCat(itemById(state.placed.seat).seat); // back to the seat
   react('joy', 'happy', 1200);
   say(kind === 'tv' ? 'Классные мультики!' : 'Ещё почитаем?');
   afterActivity();

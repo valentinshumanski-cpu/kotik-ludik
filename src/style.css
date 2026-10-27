@@ -349,7 +349,7 @@ img { -webkit-user-drag: none; }
 .lr-window { left: 40%; top: 8%; width: 52%; }
 .lr-view { left: 48.8%; top: 10.7%; width: 34.3% !important; height: 16.3% !important; object-fit: cover; }
 .lr-clouds { left: 48.8%; top: 10.7%; width: 34.3%; height: 8%; }
-.lr-frame { left: 8%; top: 16%; width: 20%; }
+.lr-frame { left: 44%; top: 23.9%; width: 9%; } /* stands on the windowsill (sill top at 84% of the window image) */
 .lr-lamp-place { left: 0%; top: 47.5%; width: 15%; }
 .lr-lamp-place img { animation: warm 4s ease-in-out infinite; }
 .lr-rug-place { left: 5%; top: 72%; width: 90%; }
@@ -376,3 +376,4 @@ img { -webkit-user-drag: none; }
 .lr-play { top: 76%; left: 50%; transform: translateX(-50%); background: linear-gradient(#a77bf3, #7b4fd6); }
 .living .bubble { top: 30%; left: 31%; }
 .sheet-body h2.shop-room { margin: calc(var(--u) * 5) 0 0; padding-bottom: calc(var(--u) * 1.5); border-bottom: 2px solid #e6cfae; font-size: calc(var(--u) * 5.2); }
+.lr-busy .lr-play, .lr-busy .lr-tv-btn, .lr-busy .lr-read { visibility: hidden; }
